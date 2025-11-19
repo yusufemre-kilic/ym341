@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Giriş Yap</title>
+<style>
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #7A7777;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.container {
+    background: white;
+    width: 350px;
+    padding: 25px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background-color: #bd081c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #a10718;
+}
+
+.form-box {
+    margin-top: 20px;
+    display: none;
+    text-align: left;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+<h2>Giriş Yap</h2>
+
+<button id="btnStudent">Öğrenci Girişi</button>
+<button id="btnTeacher">Öğretmen Girişi</button>
+
+<!-- Öğrenci Formu -->
+<div id="studentForm" class="form-box">
+    <label>Okul Numarası</label>
+    <input id="studentNo" type="text" placeholder="Okul numaranızı girin">
+
+    <label>Şifre</label>
+    <input id="studentPw" type="password" placeholder="Şifrenizi girin">
+
+    <button id="studentLoginBtn">Giriş Yap</button>
+</div>
+
+<!-- Öğretmen Formu -->
+<div id="teacherForm" class="form-box">
+    <label>Öğretmen Kodu</label>
+    <input id="teacherCode" type="text" placeholder="Öğretmen kodunuzu girin">
+
+    <label>Şifre</label>
+    <input id="teacherPw" type="password" placeholder="Şifrenizi girin">
+
+    <button id="teacherLoginBtn">Giriş Yap</button>
+</div>
+
+</div>
+
+<script>
+
+/* ============================================
+   Buton Renk Değiştirme + Form Açma
+   ============================================ */
+
+document.getElementById("btnStudent").onclick = function () {
+    document.getElementById("studentForm").style.display = "block";
+    document.getElementById("teacherForm").style.display = "none";
+
+    this.style.background = "#a10718";
+    document.getElementById("btnTeacher").style.background = "#bd081c";
+};
+
+document.getElementById("btnTeacher").onclick = function () {
+    document.getElementById("studentForm").style.display = "none";
+    document.getElementById("teacherForm").style.display = "block";
+
+    this.style.background = "#a10718";
+    document.getElementById("btnStudent").style.background = "#bd081c";
+};
+
+/* ============================================
+   🔥 ÖĞRENCİ GİRİŞ SİSTEMİ
+   ============================================ */
+
+document.getElementById("studentLoginBtn").addEventListener("click", function () {
+    const no = document.getElementById("studentNo").value.trim();
+    const pw = document.getElementById("studentPw").value.trim();
+
+    const trueNo = "12345";
+    const truePw = "1q2w3e4r";
+
+    if (no === trueNo && pw === truePw) {
+        localStorage.setItem("studentLogin", "ok");
+        window.location.href = "ogrenci-anasayfa.html";
+    } else {
+        alert("Okul numarası veya şifre yanlış.");
+    }
+});
+
+/* ============================================
+   🔥 ÖĞRETMEN GİRİŞ SİSTEMİ
+   ============================================ */
+
+document.getElementById("teacherLoginBtn").addEventListener("click", function () {
+    const code = document.getElementById("teacherCode").value.trim();
+    const pw = document.getElementById("teacherPw").value.trim();
+
+    const trueCode = "ogrt2024";    // Öğretmen kodu
+    const truePw = "9999";          // Öğretmen şifresi
+
+    if (code === trueCode && pw === truePw) {
+        localStorage.setItem("teacherLogin", "ok");
+        window.location.href = "ogretmen-panel.html";
+    } else {
+        alert("Öğretmen kodu veya şifre yanlış.");
+    }
+});
+
+</script>
+
+</body>
+</html>
