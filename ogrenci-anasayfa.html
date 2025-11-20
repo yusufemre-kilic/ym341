@@ -1,156 +1,104 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Giriş Yap</title>
-<style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Öğrenci Ana Sayfa</title>
 
-body {
+<style>
+  body {
     font-family: Arial, sans-serif;
-    background-color: #7A7777;
     margin: 0;
     padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
+    background: #f3f3f3;
+  }
 
-.container {
-    background: white;
-    width: 350px;
-    padding: 25px;
-    border-radius: 10px;
-    text-align: center;
-}
-
-button {
-    width: 100%;
-    padding: 12px;
-    background-color: #bd081c;
+  header {
+    background: #bd081c;
+    padding: 20px;
     color: white;
-    border: none;
-    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logout-btn {
+    color: #fff;
+    text-decoration: none;
     cursor: pointer;
-    margin-top: 10px;
-    transition: background-color 0.2s;
-}
+    font-size: 16px;
+  }
 
-button:hover {
-    background-color: #a10718;
-}
+  .container {
+    padding: 20px;
+  }
 
-.form-box {
-    margin-top: 20px;
-    display: none;
-    text-align: left;
-}
-
-input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 8px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-}
-
+  .event-box {
+    background: white;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  .event-box h3 {
+    margin: 0;
+    color: #c40000;
+  }
 </style>
+
+<script>
+// Öğrenci giriş kontrolü
+if (localStorage.getItem("studentLogin") !== "ok") {
+    window.location.href = "giris.html";
+}
+</script>
+
 </head>
 <body>
 
+<header>
+  <h1>Öğrenci Ana Sayfası</h1>
+  <a class="logout-btn" onclick="logout()">Çıkış</a>
+</header>
+
 <div class="container">
-<h2>Giriş Yap</h2>
-
-<button id="btnStudent">Öğrenci Girişi</button>
-<button id="btnTeacher">Öğretmen Girişi</button>
-
-<!-- Öğrenci Formu -->
-<div id="studentForm" class="form-box">
-    <label>Okul Numarası</label>
-    <input id="studentNo" type="text" placeholder="Okul numaranızı girin">
-
-    <label>Şifre</label>
-    <input id="studentPw" type="password" placeholder="Şifrenizi girin">
-
-    <button id="studentLoginBtn">Giriş Yap</button>
-</div>
-
-<!-- Öğretmen Formu -->
-<div id="teacherForm" class="form-box">
-    <label>Öğretmen Kodu</label>
-    <input id="teacherCode" type="text" placeholder="Öğretmen kodunuzu girin">
-
-    <label>Şifre</label>
-    <input id="teacherPw" type="password" placeholder="Şifrenizi girin">
-
-    <button id="teacherLoginBtn">Giriş Yap</button>
-</div>
-
+  <h2>Etkinlikler</h2>
+  <div id="event-list"></div>
 </div>
 
 <script>
+// Çıkış
+function logout() {
+  localStorage.removeItem("studentLogin");
+  window.location.href = "giris.html";
+}
 
-/* ============================================
-   Buton Renk Değiştirme + Form Açma
-   ============================================ */
+// Etkinlikleri göster
+function loadEvents() {
+  let events = JSON.parse(localStorage.getItem("events") || "[]");
+  let area = document.getElementById("event-list");
 
-document.getElementById("btnStudent").onclick = function () {
-    document.getElementById("studentForm").style.display = "block";
-    document.getElementById("teacherForm").style.display = "none";
+  if (events.length === 0) {
+    area.innerHTML = "<p>Henüz etkinlik eklenmemiş.</p>";
+    return;
+  }
 
-    this.style.background = "#a10718";
-    document.getElementById("btnTeacher").style.background = "#bd081c";
-};
+  area.innerHTML = "";
 
-document.getElementById("btnTeacher").onclick = function () {
-    document.getElementById("studentForm").style.display = "none";
-    document.getElementById("teacherForm").style.display = "block";
+  events.forEach(evt => {
+    area.innerHTML += `
+      <div class="event-box">
+        <h3>${evt.title}</h3>
+        <b>Tarih:</b> ${evt.date}<br>
+        <p>${evt.desc}</p>
+      </div>
+    `;
+  });
+}
 
-    this.style.background = "#a10718";
-    document.getElementById("btnStudent").style.background = "#bd081c";
-};
-
-/* ============================================
-   🔥 ÖĞRENCİ GİRİŞ SİSTEMİ
-   ============================================ */
-
-document.getElementById("studentLoginBtn").addEventListener("click", function () {
-    const no = document.getElementById("studentNo").value.trim();
-    const pw = document.getElementById("studentPw").value.trim();
-
-    const trueNo = "12345";
-    const truePw = "1q2w3e4r";
-
-    if (no === trueNo && pw === truePw) {
-        localStorage.setItem("studentLogin", "ok");
-        window.location.href = "ogrenci-anasayfa.html";
-    } else {
-        alert("Okul numarası veya şifre yanlış.");
-    }
-});
-
-/* ============================================
-   🔥 ÖĞRETMEN GİRİŞ SİSTEMİ
-   ============================================ */
-
-document.getElementById("teacherLoginBtn").addEventListener("click", function () {
-    const code = document.getElementById("teacherCode").value.trim();
-    const pw = document.getElementById("teacherPw").value.trim();
-
-    const trueCode = "ogrt2024";    // Öğretmen kodu
-    const truePw = "9999";          // Öğretmen şifresi
-
-    if (code === trueCode && pw === truePw) {
-        localStorage.setItem("teacherLogin", "ok");
-        window.location.href = "ogretmen-panel.html";
-    } else {
-        alert("Öğretmen kodu veya şifre yanlış.");
-    }
-});
-
+loadEvents();
 </script>
 
 </body>
 </html>
+
