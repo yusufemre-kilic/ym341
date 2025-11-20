@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Öğretmen Paneli</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: Arial;
+    background: #f2f2f2;
+  }
+
+  header {
+    background: #bd081c;
+    padding: 20px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logout-btn {
+    color: white;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .container {
+    padding: 20px;
+  }
+
+  /* Etkinlik liste kutuları */
+  .event-list {
+    padding: 20px;
+  }
+
+  .event-box {
+    background: white;
+    padding: 15px;
+    border-left: 5px solid #bd081c;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    position: relative;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.2);
+  }
+
+  /* Sağ üstteki silme butonu */
+  .delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #bd081c;
+    font-size: 22px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  .delete-btn:hover {
+    color: #700000;
+  }
+
+  /* Etkinlik Ekle Butonu */
+  #addEventBtn {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    background: #bd081c;
+    color: white;
+    padding: 18px 22px;
+    border-radius: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  }
+
+  /* Popup */
+  #popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .popup-box {
+    background: white;
+    width: 300px;
+    padding: 20px;
+    border-radius: 10px;
+  }
+
+  input, textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+  }
+
+  button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    background: #bd081c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+</style>
+
+<script>
+// Öğretmen login kontrolü
+if (!localStorage.getItem("teacherLogin")) {
+    window.location.href = "giris.html";
+}
+</script>
+</head>
+<body>
+
+<header>
+  <h1>Öğretmen Paneli</h1>
+  <a class="logout-btn" onclick="logout()">Çıkış</a>
+</header>
+
+<div class="container">
+  <h2>Hoş geldiniz hocam!</h2>
+  <p>Buradan etkinlik ekleyebilir ve yönetebilirsiniz.</p>
+</div>
+
+<!-- Etkinlikler Listesi -->
+<div class="event-list" id="eventList"></div>
+
+<!-- Etkinlik Ekle Butonu -->
+<div id="addEventBtn" onclick="openPopup()">Etkinlik Ekle</div>
+
+<!-- Popup -->
+<div id="popup">
+  <div class="popup-box">
+    <h3>Etkinlik Ekle</h3>
+
+    <label>Etkinlik Başlığı</label>
+    <input id="evtTitle" type="text">
+
+    <label>Tarih</label>
+    <input id="evtDate" type="date">
+
+    <label>Açıklama</label>
+    <textarea id="evtDesc"></textarea>
+
+    <button onclick="saveEvent()">Kaydet</button>
+    <button onclick="closePopup()" style="background:#555;">İptal</button>
+  </div>
+</div>
+
+<script>
+// Popup aç
+function openPopup() {
+  document.getElementById("popup").style.display = "flex";
+}
+
+// Popup kapat
+function closePopup() {
+  document.getElementById("popup").style.display = "none";
+}
+
+// Çıkış
+function logout() {
+  localStorage.removeItem("teacherLogin");
+  window.location.href = "giris.html";
+}
+
+// Etkinlikleri yükle
+function loadEvents() {
+  let events = JSON.parse(localStorage.getItem("events")) || [];
+  let list = document.getElementById("eventList");
+
+  list.innerHTML = "";
+
+  events.forEach((evt, index) => {
+    list.innerHTML += `
+      <div class="event-box">
+        <button class="delete-btn" onclick="deleteEvent(${index})">Etkinliği Sil</button>
+        <h3>${evt.title}</h3>
+        <b>Tarih:</b> ${evt.date}<br><br>
+        <p>${evt.desc}</p>
+      </div>
+    `;
+  });
+}
+
+// Etkinlik kaydet
+function saveEvent() {
+  let title = document.getElementById("evtTitle").value;
+  let date  = document.getElementById("evtDate").value;
+  let desc  = document.getElementById("evtDesc").value;
+
+  if (!title || !date || !desc) {
+    alert("Lütfen tüm alanları doldurun!");
+    return;
+  }
+
+  let events = JSON.parse(localStorage.getItem("events")) || [];
+
+  events.push({ title, date, desc });
+
+  localStorage.setItem("events", JSON.stringify(events));
+
+  closePopup();
+  loadEvents();
+}
+
+// Etkinlik sil
+function deleteEvent(index) {
+  if (confirm("Bu etkinliği silmek istiyor musunuz?")) {
+    let events = JSON.parse(localStorage.getItem("events")) || [];
+    events.splice(index, 1);
+    localStorage.setItem("events", JSON.stringify(events));
+    loadEvents();
+  }
+}
+
+// Sayfa açılınca etkinlikleri yükle
+loadEvents();
+</script>
+
+</body>
+</html>
