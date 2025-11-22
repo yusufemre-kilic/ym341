@@ -1,0 +1,17 @@
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from .database import Base # FastAPI'nin DB temel sınıfı
+from datetime import datetime
+from sqlalchemy.sql import func
+
+class Student(Base):
+    __tablename__ = "students"
+
+    id = Column(Integer, primary_key=True, index=True)
+    keycloak_id = Column(String(255), unique=True, index=True) # Keycloak'tan gelen ID
+    email = Column(String(255), unique=True, index=True)
+    first_name = Column(String(255))
+    last_name = Column(String(255))
+    is_active = Column(Boolean, default=True)
+    # MySQL'de DATETIME tipi kullanılır
+    registered_at = Column(DateTime, default=func.now()) 
+    department = Column(String(100), nullable=True) # Opsiyonel alan
