@@ -1,0 +1,53 @@
+from django.db import models
+from django.utils import timezone
+
+# ============================================
+# 1. Etkinlik Ana Modeli (Tablo Adı: events)
+# ============================================
+class Event(models.Model):
+    # Etkinliği oluşturan öğretmenin Keycloak'tan gelen benzersiz ID'si.
+    teacher_keycloak_id = models.CharField(max_length=255, db_index=True)
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    date = models.DateTimeField(default=timezone.now)
+    
+    # Yönetici onay durumu (Django Admin'de yönetilir)
+    is_approved = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'events' # Veritabanında kullanılacak tablo adı
+        verbose_name = "Etkinlik"
+        verbose_name_plural = "Etkinlikler"
+
+    def __str__(self):
+        return self.title
+
+# ============================================
+# 2. Etkinlik Katılımcı Modeli (Tablo Adı: event_participants)
+# ============================================
+class EventParticipant(models.Model):
+    # Hangi etkinliğe katılım olduğunu belirtir.
+    # Event silinirse, ona ait tüm katılım kayıtları da silinir (models.CASCADE).
+    event = models.ForeignKey(
+        Event, 
+        on_delete=models.CASCADE, 
+        related_name='participants' # Event objesi üzerinden katılımcılara erişmek için kullanılır
+    )
+    
+    # Katılan öğrencinin Keycloak ID'si (Student Service'in kullandığı kimlik)
+    student_keycloak_id = models.CharField(max_length=255, db_index=True)
+    
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'event_participants' # Veritabanında kullanılacak tablo adı
+        verbose_name = "Etkinlik Katılımcısı"
+        verbose_name_plural = "Etkinlik Katılımcıları"
+        # Bir öğrencinin aynı etkinliğe sadece bir kez katılmasını sağlar
+        unique_together = ('event', 'student_keycloak_id')
+
+    def __str__(self):
+        return f"{self.student_keycloak_id} katıldı: {self.event.title}"
