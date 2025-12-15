@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Öğretmen Etkinlik Paneli</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9; }
+        .form-container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        textarea, input[type="text"], input[type="datetime-local"] { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #bd081c; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #a10718; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; text-align: left; }
+        a { text-decoration: none; color: #bd081c; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="form-container">
+    <h2>Yeni Etkinlik Oluştur</h2>
+    
+    <p id="auth-status" style="color: black; font-weight: bold;">Veritabanı Bağlantısı Hazır</p>
+
+    <form id="eventForm">
+        <label for="title">Etkinlik Başlığı:</label>
+        <input type="text" id="title" required placeholder="Örn: Bahar Şenliği">
+
+        <label for="description">Detaylı Açıklama:</label>
+        <textarea id="description" rows="5" required placeholder="Etkinlik detaylarını buraya girin..."></textarea>
+
+        <label for="date">Etkinlik Tarih ve Saati:</label>
+        <input type="datetime-local" id="date" required>
+
+        <button type="submit">Etkinliği Onaya Gönder (DB)</button>
+        <p id="message" style="margin-top: 15px; font-weight: bold;"></p>
+    </form>
+    
+    <p><a href="/" onclick="localStorage.removeItem('access_token');">Çıkış Yap</a></p>
+</div>
+
+<script>
+    // ARTIK GERÇEK ADRESE İSTEK ATIYORUZ
+    const CREATE_EVENT_URL = "http://localhost/api/events/create/";
+    
+    const eventForm = document.getElementById('eventForm');
+    const authStatus = document.getElementById('auth-status');
+    const messageDisplay = document.getElementById('message');
+
+    // Form gönderildiğinde çalışacak kod
+    eventForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // 1. Formdaki verileri al
+        const title = document.getElementById('title').value;
+        const description = document.getElementById('description').value;
+        const date = document.getElementById('date').value;
+
+        // Kullanıcıya "Bekle" mesajı ver
+        messageDisplay.textContent = "Sunucuya kaydediliyor...";
+        messageDisplay.style.color = "blue";
+
+        // 2. Veriyi JSON paketine koy
+        const payload = {
+            title: title,
+            description: description,
+            date: date
+        };
+
+        try {
+            // 3. Django'ya POST isteği at (Fetch)
+            const response = await fetch(CREATE_EVENT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                    // Şimdilik Token yok, test için kapattık
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            // 4. Sonucu kontrol et
+            if (response.ok) {
+                // BAŞARILI!
+                messageDisplay.style.color = 'green';
+                messageDisplay.textContent = `✅ BAŞARILI! Veritabanına Kaydedildi. (ID: ${data.id})`;
+                eventForm.reset(); // Formu temizle
+            } else {
+                // HATA!
+                messageDisplay.style.color = 'red';
+                messageDisplay.textContent = `❌ Hata: ${data.error || 'Kaydedilemedi'}`;
+            }
+        } catch (error) {
+            // SUNUCU HATASI
+            messageDisplay.style.color = 'red';
+            messageDisplay.textContent = `⚠️ Sunucu Hatası: ${error.message}. Django çalışıyor mu?`;
+        }
+    });
+</script>
+</body>
+</html>

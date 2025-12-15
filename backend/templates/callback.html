@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Giriş Başarılı</title>
+</head>
+<body>
+    <h2>Giriş yapılıyor... Lütfen bekleyin.</h2>
+    <p id="token-status">Token alınıyor...</p>
+
+   <script>
+        function getHashParams() {
+            const hash = window.location.hash.substring(1); 
+            const params = {};
+            hash.split('&').forEach(part => {
+                const parts = part.split('=');
+                params[parts[0]] = parts[1];
+            });
+            return params;
+        }
+
+        const params = getHashParams();
+        const accessToken = params['access_token'];
+
+        if (accessToken) {
+            // Token'ı tarayıcıda kaydet
+            localStorage.setItem('access_token', accessToken);
+            document.getElementById('token-status').textContent = 'Token başarıyla alındı. Yönlendiriliyor...';
+            
+            // Kullanıcının login.html'de seçtiği role göre yönlendir
+            const role = localStorage.getItem('selectedRole');
+            
+            // DİKKAT: Buradaki adresler Django urls.py ile eşleşmeli
+            if (role === 'student') {
+                window.location.href = '/ogrenci/';  // .html YOK
+            } else if (role === 'teacher') {
+                window.location.href = '/ogretmen/'; // .html YOK
+            } else {
+                 window.location.href = '/'; // Ana sayfaya dön
+            }
+        } else {
+            // Eğer URL'de token yoksa ama LocalStorage'da varsa direkt yönlendir (Opsiyonel)
+            const storedToken = localStorage.getItem('access_token');
+            const role = localStorage.getItem('selectedRole');
+            
+            if(storedToken && role) {
+                if (role === 'student') window.location.href = '/ogrenci/';
+                else if (role === 'teacher') window.location.href = '/ogretmen/';
+            } else {
+                document.getElementById('token-status').textContent = 'Hata: Token alınamadı.';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş Paneli</title>
+    <style>
+        body {
+           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            
+            /* C: sürücüsü yerine /static/ yolunu kullanıyoruz */
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
+                url('/static/images/dogus.jpg');
+            
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: #333; /* Resim yüklenmezse bu renk görünür */
+            
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; margin: 0;
+        }
+        .login-card {
+            background: white; padding: 40px; border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 350px;
+        }
+        h2 { color: #333; margin-bottom: 30px; }
+        .btn {
+            display: block; width: 100%; padding: 15px; margin: 15px 0;
+            border: none; border-radius: 8px; cursor: pointer;
+            font-size: 16px; font-weight: bold; color: white;
+            text-decoration: none; transition: transform 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-student { background-color: #ff0000; }
+        .btn-teacher { background-color: #ff0000; }
+
+        /* POPUP STİLİ */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 10px;
+            width: 320px; position: relative;
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        input {
+            width: 100%; padding: 12px; margin: 10px 0;
+            border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;
+        }
+        .close-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: transparent; color: #999; border: none;
+            font-size: 20px; cursor: pointer;
+        }
+        .error-text { color: red; font-size: 14px; display: none; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <h2>Okul Yönetim Sistemi</h2>
+    <p style="color: #666; margin-bottom: 20px;">Lütfen giriş türünü seçiniz</p>
+    
+    <button onclick="openModal('student')" class="btn btn-student">👨‍🎓 Öğrenci Girişi</button>
+    <button onclick="openModal('teacher')" class="btn btn-teacher">👩‍🏫 Öğretmen Girişi</button>
+</div>
+
+<div id="loginModal" class="modal">
+    <div class="modal-content">
+        <button onclick="closeModal()" class="close-btn">&times;</button>
+        
+        <h3 id="modalTitle" style="margin-top: 0;">Giriş Yap</h3>
+        
+        <label style="display:block; text-align:left; font-size:14px; color:#555;">E-posta</label>
+        <input type="email" id="email" placeholder="isim@dogus.edu.tr">
+        
+        <label style="display:block; text-align:left; font-size:14px; color:#555;">Şifre</label>
+        <input type="password" id="password" placeholder="••••••">
+        
+        <button onclick="performLogin()" class="btn" id="modalBtn">Giriş Yap</button>
+        <p id="errorMsg" class="error-text"></p>
+    </div>
+</div>
+
+<script>
+    const modal = document.getElementById('loginModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBtn = document.getElementById('modalBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    
+    // Hangi tür giriş yapıldığını burada tutacağız
+    let currentLoginType = ''; 
+
+    function openModal(type) {
+        currentLoginType = type; // 'student' veya 'teacher'
+        modal.style.display = 'flex';
+        errorMsg.style.display = 'none';
+        
+        // Formu temizle
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+
+        // Tasarımı tipe göre değiştir
+        if (type === 'student') {
+            modalTitle.textContent = "👨‍🎓 Öğrenci Girişi";
+            modalBtn.className = "btn btn-student"; // Mavi buton
+        } else {
+            modalTitle.textContent = "👩‍🏫 Öğretmen Girişi";
+            modalBtn.className = "btn btn-teacher"; // Kırmızı buton
+        }
+        
+        document.getElementById('email').focus();
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    async function performLogin() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const btn = document.getElementById('modalBtn');
+
+        errorMsg.style.display = 'none';
+        btn.textContent = "Kontrol ediliyor...";
+
+        // API Adresini ve Yönlenecek Sayfayı Seç
+        let apiUrl = '';
+        let redirectUrl = '';
+
+        if (currentLoginType === 'student') {
+            apiUrl = '/api/verify-student/';
+            redirectUrl = '/ogrenci/';
+        } else {
+            apiUrl = '/api/verify-teacher/';
+            redirectUrl = '/ogretmen/';
+        }
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, password: password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                window.location.href = redirectUrl;
+            } else {
+                errorMsg.textContent = data.error || "Giriş başarısız.";
+                errorMsg.style.display = 'block';
+                btn.textContent = "Giriş Yap";
+            }
+        } catch (err) {
+            errorMsg.textContent = "Sunucuya bağlanılamadı.";
+            errorMsg.style.display = 'block';
+            btn.textContent = "Giriş Yap";
+        }
+    }
+
+    // Enter tuşu desteği
+    document.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter' && modal.style.display === 'flex') {
+            performLogin();
+        }
+    });
+</script>
+
+</body>
+</html>

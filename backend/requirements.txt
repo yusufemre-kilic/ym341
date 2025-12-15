@@ -1,0 +1,29 @@
+# Django framework
+Django>=5.0,<6.0
+
+# Environment variables
+python-dotenv>=1.0
+
+# Database
+psycopg2-binary>=2.9   # PostgreSQL kullanacaksan
+# mysqlclient>=2.2      # MySQL için, yorum satırında
+
+# Static & Media
+Pillow>=10.0
+
+# Auth & Security
+django-allauth>=0.60
+
+# Forms & UI
+django-crispy-forms>=2.1
+crispy-bootstrap5>=2024.2
+
+# API (REST)
+djangorestframework>=3.15
+
+# CORS (frontend varsa)
+django-cors-headers>=4.3
+
+# Production
+gunicorn>=21.2
+whitenoise>=6.6

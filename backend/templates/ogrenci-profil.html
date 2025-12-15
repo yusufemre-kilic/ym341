@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Öğrenci Profilim</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; }
+        .profile-container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .data-row { padding: 10px 0; border-bottom: 1px solid #eee; text-align: left; }
+        .data-row strong { display: inline-block; width: 150px; }
+        a { text-decoration: none; color: #bd081c; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="profile-container">
+    <h2>Öğrenci Profilim</h2>
+    <p id="auth-status" style="color: blue;">Veriler yükleniyor...</p>
+
+    <div id="profile-data" style="display:none;">
+        <div class="data-row"><strong>Ad Soyad:</strong> <span id="name"></span></div>
+        <div class="data-row"><strong>E-posta:</strong> <span id="email"></span></div>
+        <div class="data-row"><strong>Kayıt Tarihi:</strong> <span id="registered-at"></span></div>
+    </div>
+    
+    <p id="message" style="margin-top: 15px;"></p>
+    
+    <p><a href="/" onclick="localStorage.removeItem('access_token');">Çıkış Yap</a></p>
+</div>
+
+<script>
+    // TEST MODU: Token kontrolünü geçici olarak kapattık.
+    const authStatus = document.getElementById('auth-status');
+    const profileData = document.getElementById('profile-data');
+    
+    // Normalde burası token kontrolü yapar, şimdilik direkt gösteriyoruz:
+    showTestProfile();
+
+    function showTestProfile() {
+        // Sahte verilerle dolduruyoruz
+        document.getElementById('name').textContent = "Test Öğrenci Yusuf";
+        document.getElementById('email').textContent = "yusuf@ornek.com";
+        document.getElementById('registered-at').textContent = new Date().toLocaleDateString();
+        
+        // Alanları görünür yap
+        authStatus.textContent = 'Giriş Başarılı (Test Modu)';
+        authStatus.style.color = 'green';
+        profileData.style.display = 'block';
+    }
+
+    /* NOT: İleride Keycloak bağlantısı tekrar açılınca bu kod kullanılacak:
+    async function fetchProfile() {
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) { window.location.href = '/'; return; }
+        
+        // API isteği buraya gelecek...
+    }
+    */
+</script>
+
+</body>
+</html>
