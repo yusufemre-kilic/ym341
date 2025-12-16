@@ -1,0 +1,24 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Docker & Ayarlar
+.env
+.env.example
+Dockerfile
+docker-compose.yml
+README.md
+
+# DB (Localdekini kopyalama)
+db.sqlite3

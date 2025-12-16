@@ -6,8 +6,12 @@ from django.db.models import Q
 import json
 from .models import Event, Tag, StudentProfile
 
+# YENİ: Yapay zeka servisini buradan çağırıyoruz
+# (Artık analyze_and_tag fonksiyonu burada kalabalık yapmıyor)
+from .services import analyze_and_tag_event 
+
 # ==========================================
-# 1. EKSİK OLAN SAYFA YÖNLENDİRMELERİ (BURASI ÇOK ÖNEMLİ)
+# 1. SAYFA YÖNLENDİRMELERİ
 # ==========================================
 def login_page(request):
     return render(request, 'login.html')
@@ -22,28 +26,7 @@ def ogretmen_page(request):
     return render(request, 'ogretmen-panel.html')
 
 # ==========================================
-# 2. YAPAY ZEKA (OTOMATİK ETİKETLEME)
-# ==========================================
-def analyze_and_tag(event_instance):
-    keywords = {
-        "Yazılım": ["python", "java", "kodlama", "yazılım", "bilgisayar", "ai", "yapay zeka", "web", "react", "django"],
-        "Spor": ["futbol", "basketbol", "voleybol", "koşu", "turnuva", "maç", "spor", "fitness", "yüzme"],
-        "Müzik": ["konser", "gitar", "piyano", "şarkı", "dinleti", "müzik", "orkestra", "sahne"],
-        "Sanat": ["resim", "tiyatro", "sinema", "sergi", "sanat", "boyama", "heykel", "fotoğraf"],
-        "Bilim": ["fizik", "kimya", "biyoloji", "deney", "bilim", "uzay", "robot"],
-        "Sinema": ["film", "sinema", "gösterim", "izle", "yönetmen", "oyuncu"]
-    }
-    full_text = (event_instance.title + " " + event_instance.description).lower()
-    found_tags = []
-    for category, words in keywords.items():
-        if any(word in full_text for word in words):
-            tag_obj, _ = Tag.objects.get_or_create(name=category)
-            event_instance.tags.add(tag_obj)
-            found_tags.append(category)
-    return found_tags
-
-# ==========================================
-# 3. API FONKSİYONLARI
+# 2. API FONKSİYONLARI
 # ==========================================
 
 @csrf_exempt
@@ -51,12 +34,16 @@ def create_event(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            # Etkinliği oluştur
             new_event = Event.objects.create(
                 title=data['title'],
                 description=data['description'],
                 date=data.get('date')
             )
-            added_tags = analyze_and_tag(new_event)
+            
+            # SERVİS KULLANIMI: Etiketlemeyi servise yaptır
+            added_tags = analyze_and_tag_event(new_event)
+            
             return JsonResponse({"message": f"Kayıt Başarılı. Eklenen Etiketler: {added_tags}", "id": new_event.id}, status=201)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
