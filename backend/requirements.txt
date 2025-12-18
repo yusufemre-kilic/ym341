@@ -27,3 +27,6 @@ django-cors-headers>=4.3
 # Production
 gunicorn>=21.2
 whitenoise>=6.6
+
+#NLP ıcın kutuphane
+sentence-transformers>=2.2.2

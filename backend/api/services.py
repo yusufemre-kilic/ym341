@@ -1,31 +1,72 @@
 # backend/api/services.py
 
 from .models import Tag
+from sentence_transformers import SentenceTransformer, util
+import logging
+
+# Loglama (Hata ayıklamak için profesyonel yaklaşım)
+logger = logging.getLogger(__name__)
+
+# 1. MODELİ YÜKLE
+# Bu işlem uygulama ilk açıldığında 1 kere yapılır.
+# 'paraphrase-multilingual-MiniLM-L12-v2' modeli Türkçe dahil 50+ dili destekler.
+print("⏳ AI Modeli Yükleniyor... (İlk seferde biraz sürebilir)")
+try:
+    model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+    print("✅ AI Modeli Hazır!")
+except Exception as e:
+    logger.error(f"Model yüklenemedi: {e}")
+    model = None
 
 def analyze_and_tag_event(event_instance):
     """
-    Bir etkinlik nesnesini alır, başlık ve açıklamasını analiz eder,
-    ilgili etiketleri bulup veritabanına kaydeder ve etkinliğe ekler.
-    Geriye eklenen etiketlerin listesini döndürür.
+    Etkinlik metnini vektöre çevirir ve tanımlı kategorilerle
+    anlamsal benzerliğini (Cosine Similarity) ölçer.
     """
-    keywords = {
-        "Yazılım": ["python", "java", "kodlama", "yazılım", "bilgisayar", "ai", "yapay zeka", "web", "react", "django"],
-        "Spor": ["futbol", "basketbol", "voleybol", "koşu", "turnuva", "maç", "spor", "fitness", "yüzme"],
-        "Müzik": ["konser", "gitar", "piyano", "şarkı", "dinleti", "müzik", "orkestra", "sahne", "rock", "pop"],
-        "Sanat": ["resim", "tiyatro", "sinema", "sergi", "sanat", "boyama", "heykel", "fotoğraf"],
-        "Bilim": ["fizik", "kimya", "biyoloji", "deney", "bilim", "uzay", "robot"],
-        "Sinema": ["film", "sinema", "gösterim", "izle", "yönetmen", "oyuncu"]
-    }
+    if model is None:
+        return ["HATA: AI Modeli Yüklenemedi"]
 
-    # Metinleri birleştir ve küçült
-    full_text = (event_instance.title + " " + event_instance.description).lower()
+# 2. HEDEF KATEGORİLER (Güncellendi)
+    # Kategorileri ne kadar detaylı tanımlarsak AI o kadar iyi anlar.
+    categories = [
+        "Yazılım, Kodlama, Teknoloji ve Bilgisayar",
+        "Spor, Futbol, Basketbol, Antrenman ve Sağlık", # Detay ekledik
+        "Müzik, Konser, Enstrüman ve Şarkı",
+        "Sanat, Resim, Tiyatro ve Sergi",
+        "Bilim, Uzay, Fizik ve Akademik",
+        "Sinema, Film, Yönetmen ve Oyuncu",
+        "Gezi, Doğa, Kamp ve Seyahat",
+        "Kariyer, İş Dünyası, Girişimcilik ve Staj"
+    ]
+
+    # Etkinlik metnini birleştir
+    event_text = f"{event_instance.title}. {event_instance.description}"
+
+    # 3. VEKTÖR HESAPLAMA (Embedding)
+    # Etkinliğin ve kategorilerin uzaydaki yerini buluyoruz
+    event_embedding = model.encode(event_text, convert_to_tensor=True)
+    category_embeddings = model.encode(categories, convert_to_tensor=True)
+
+    # 4. BENZERLİK ÖLÇÜMÜ (Cosine Similarity)
+    # Hangi kategoriyle ne kadar uyuşuyor?
+    cosine_scores = util.cos_sim(event_embedding, category_embeddings)[0]
 
     found_tags = []
-    for category, words in keywords.items():
-        # Eğer kelimelerden biri metinde geçiyorsa
-        if any(word in full_text for word in words):
-            tag_obj, _ = Tag.objects.get_or_create(name=category)
-            event_instance.tags.add(tag_obj)
-            found_tags.append(category)
     
+    # Benzerlik Eşiği (0.0 ile 1.0 arası)
+    # 0.25 üzerindeki eşleşmeleri kabul et diyoruz.
+    THRESHOLD = 0.25 
+
+    for i, score in enumerate(cosine_scores):
+        if score > THRESHOLD:
+            category_name = categories[i]
+            
+            # Kategori ismini sadeleştir (Örn: "Yazılım ve Teknoloji" -> "Yazılım")
+            # Tag olarak kısa halini kaydedelim
+            simple_tag_name = category_name.split(" ")[0] 
+            
+            tag_obj, _ = Tag.objects.get_or_create(name=simple_tag_name)
+            event_instance.tags.add(tag_obj)
+            found_tags.append(f"{simple_tag_name} (%{score:.2f})")
+
     return found_tags
