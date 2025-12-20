@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}Neural Network - AI Grafiği{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+
+<style>
+    #graph-wrapper {
+        position: relative;
+        width: 100%;
+        height: 75vh;
+        background: radial-gradient(circle at center, #1a1a2e 0%, #16213e 100%);
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        overflow: hidden;
+        border: 1px solid #30475e;
+    }
+
+    #network-container {
+        width: 100%;
+        height: 100%;
+    }
+
+    .loading-overlay {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(26, 26, 46, 0.9);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #00d4ff;
+        font-family: 'Orbitron', sans-serif;
+        z-index: 10;
+        transition: opacity 0.5s ease;
+    }
+
+    .info-panel {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #00d4ff;
+        color: white;
+        font-family: 'Roboto', sans-serif;
+        backdrop-filter: blur(5px);
+        max-width: 300px;
+        z-index: 5;
+    }
+
+    .info-panel h4 {
+        margin: 0 0 5px 0;
+        font-family: 'Orbitron', sans-serif;
+        color: #00d4ff;
+        font-size: 16px;
+    }
+    
+    .info-panel p {
+        font-size: 12px;
+        color: #ccc;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    
+    <div id="graph-wrapper">
+        <div class="info-panel">
+            <h4><i class="fas fa-project-diagram"></i> Semantik Ağ</h4>
+            <p>Yapay zeka tarafından analiz edilen etkinliklerin anlamsal ilişki haritası. Çizgi kalınlığı, benzerlik oranını gösterir.</p>
+            <small class="text-muted mt-2 d-block"><i class="fas fa-mouse"></i> Zoom: Scroll | <i class="fas fa-hand-paper"></i> Pan: Sürükle</small>
+        </div>
+
+        <div id="loading" class="loading-overlay">
+            <div class="spinner-border mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <span>AI Verileri İşliyor...</span>
+        </div>
+
+        <div id="network-container"></div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const loading = document.getElementById('loading');
+        
+        fetch('/api/graph-data/')
+            .then(response => response.json())
+            .then(data => {
+                loading.style.opacity = '0';
+                setTimeout(() => loading.style.display = 'none', 500);
+
+                const processedNodes = data.nodes.map(node => ({
+                    id: node.id,
+                    label: node.label,
+                    shape: 'dot',
+                    size: 25,
+                    color: {
+                        background: '#0f3460',
+                        border: '#00d4ff',
+                        highlight: { background: '#e94560', border: '#fff' },
+                        hover: { background: '#16213e', border: '#00d4ff' }
+                    },
+                    font: {
+                        color: '#ffffff',
+                        size: 14,
+                        face: 'Roboto',
+                        background: 'rgba(0,0,0,0.7)',
+                        strokeWidth: 0
+                    },
+                    borderWidth: 2,
+                    shadow: { enabled: true, color: 'rgba(0,212,255,0.5)', size: 10 }
+                }));
+
+                // 🔥 GÜNCELLEME BURADA: Çizgiler artık daha kalın ve belirgin 🔥
+                const processedEdges = data.edges.map(edge => ({
+                    from: edge.from,
+                    to: edge.to,
+                    // Kalınlığı benzerlik skoruna (0-1 arası) göre ayarlıyoruz.
+                    // Eskiden *5 idi, şimdi *15 yaptık. Minimum 1px kalınlık garantisi verdik.
+                    width: Math.max(1, edge.value * 15), 
+                    
+                    // Rengi daha opak yaptık (0.1 -> 0.5)
+                    color: { color: 'rgba(255, 255, 255, 0.5)', highlight: '#00d4ff' }, 
+                    smooth: { type: 'continuous' },
+                    title: edge.title
+                }));
+
+                var container = document.getElementById('network-container');
+                var graphData = { nodes: new vis.DataSet(processedNodes), edges: new vis.DataSet(processedEdges) };
+
+                var options = {
+                    nodes: {
+                        borderWidthSelected: 4
+                    },
+                    physics: {
+                        enabled: true,
+                        forceAtlas2Based: {
+                            gravitationalConstant: -50,
+                            centralGravity: 0.01,
+                            springLength: 100,
+                            springConstant: 0.08
+                        },
+                        maxVelocity: 50,
+                        solver: 'forceAtlas2Based',
+                        timestep: 0.35,
+                        stabilization: { iterations: 150 }
+                    },
+                    interaction: {
+                        hover: true,
+                        hoverConnectedEdges: true,
+                        tooltipDelay: 200,
+                        zoomView: true,
+                        zoomSpeed: 0.1 // Yavaş zoom
+                    },
+                    layout: {
+                        randomSeed: 2
+                    }
+                };
+
+                var network = new vis.Network(container, graphData, options);
+
+                network.on("click", function (params) {
+                    if (params.nodes.length > 0) {
+                        const nodeId = params.nodes[0];
+                        const clickedNode = processedNodes.find(n => n.id === nodeId);
+                        
+                        Swal.fire({
+                            title: clickedNode.label,
+                            text: 'Bu etkinliğin diğerleriyle olan anlamsal bağları görselleştirilmiştir.',
+                            icon: 'info',
+                            confirmButtonText: 'Detaylara Git',
+                            background: '#1a1a2e',
+                            color: '#fff',
+                            confirmButtonColor: '#00d4ff'
+                        });
+                    }
+                });
+
+            })
+            .catch(error => {
+                console.error('Hata:', error);
+                loading.innerHTML = '<span class="text-danger">Veri yüklenemedi!</span>';
+            });
+    });
+</script>
+{% endblock %}

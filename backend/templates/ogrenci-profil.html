@@ -1,167 +1,97 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Öğrenci Paneli</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; padding: 20px; }
-        .container { max-width: 800px; margin: auto; }
-        
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
-        .hidden { display: none !important; }
-        
-        /* Etiketler */
-        .tag-container { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 20px; }
-        .tag-label {
-            background: #eee; padding: 10px 20px; border-radius: 20px; cursor: pointer; border: 2px solid transparent; font-weight: bold; color: #555;
-        }
-        /* Seçilince */
-        input[type="checkbox"]:checked + .tag-label {
-            background: #007bff; color: white; border-color: #0056b3; transform: scale(1.05); transition: 0.2s;
-        }
-        input[type="checkbox"] { display: none; }
-        
-        /* Butonlar */
-        .btn-green { background: #28a745; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; margin-top: 20px; font-weight: bold;}
-        .btn-reset { background: #ffc107; color: #333; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold;}
-        
-        /* Etkinlik Listesi */
-        .event-item { text-align: left; border-left: 5px solid #007bff; background: #fff; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .tags span { background: #ffc107; padding: 3px 8px; border-radius: 10px; font-size: 12px; margin-right: 5px; font-weight: bold;}
-    </style>
-</head>
-<body>
+{% extends 'base.html' %}
 
-<div class="container">
-    
-    <div id="loading-screen" style="text-align: center; padding: 50px;">
-        <h2>⏳ Sistem Hazırlanıyor...</h2>
-        <p>Lütfen bekleyin, veriler çekiliyor.</p>
-    </div>
+{% block title %}Öğrenci Paneli - Kampüs AI{% endblock %}
 
-    <div id="interest-section" class="card hidden">
-        <h1>👋 Hoş Geldin!</h1>
-        <p>Sana uygun etkinlikleri bulmamız için ilgi alanlarını seçmelisin.</p>
-        <div class="tag-container">
-            <label><input type="checkbox" value="Yazılım"><span class="tag-label">💻 Yazılım</span></label>
-            <label><input type="checkbox" value="Müzik"><span class="tag-label">🎵 Müzik</span></label>
-            <label><input type="checkbox" value="Spor"><span class="tag-label">⚽ Spor</span></label>
-            <label><input type="checkbox" value="Sanat"><span class="tag-label">🎨 Sanat</span></label>
-            <label><input type="checkbox" value="Sinema"><span class="tag-label">🎬 Sinema</span></label>
-            <label><input type="checkbox" value="Bilim"><span class="tag-label">🚀 Bilim</span></label>
+{% block content %}
+<div class="row mb-5">
+    <div class="col-md-8 mx-auto text-center">
+        <h1 class="display-5 fw-bold text-primary mb-3">Ne yapmak istersin?</h1>
+        <p class="text-muted">Yapay zekaya ruh halini anlat, sana en uygun etkinliği bulsun.</p>
+        
+        <div class="input-group input-group-lg shadow-sm">
+            <input type="text" id="aiInput" class="form-control" placeholder="Örn: Enerjimi atacak hareketli bir şeyler arıyorum...">
+            <button class="btn btn-primary px-4" type="button" onclick="searchAI()">
+                <i class="fas fa-magic"></i> AI ile Bul
+            </button>
         </div>
-        <button class="btn-green" onclick="saveInterests()">Kaydet ve Başla</button>
     </div>
-
-    <div id="dashboard-section" class="hidden">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h2 id="dashboard-title" style="margin:0; color:#333;">Etkinlikler</h2>
-            <button class="btn-reset" onclick="resetInterests()">🔄 Tercihleri Sıfırla</button>
-        </div>
-        
-        <div id="event-list"></div>
-    </div>
-
-    <div style="text-align: center; margin-top: 30px;">
-        <a href="/" style="color: #dc3545; text-decoration: none; font-weight: bold;">Güvenli Çıkış Yap</a>
-    </div>
-
 </div>
 
+<div class="row" id="resultsArea">
+    <div class="col-12 text-center text-muted">
+        <i class="fas fa-arrow-up"></i> Yukarıya bir şeyler yazarak yapay zekayı test et!
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
 <script>
-    // Sayfa yüklenince çalış
-    window.onload = function() {
-        fetchData();
-    };
+async function searchAI() {
+    const query = document.getElementById('aiInput').value;
+    const resultsArea = document.getElementById('resultsArea');
+    
+    if (!query) return;
 
-    async function fetchData() {
-        try {
-            // API'den veri iste
-            const response = await fetch('/api/events/recommend/');
-            
-            // Eğer sunucu hata verdiyse (500, 404 vs)
-            if (!response.ok) throw new Error("Sunucuya bağlanılamadı! (Durum: " + response.status + ")");
-            
-            const data = await response.json();
+    resultsArea.innerHTML = '<div class="text-center mt-4"><div class="spinner-border text-primary" role="status"></div><p>AI Düşünüyor...</p></div>';
 
-            // Yükleniyor ekranını gizle
-            document.getElementById('loading-screen').classList.add('hidden');
+    try {
+        const response = await fetch(`/api/search/?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
 
-            // Karar Ver: Seçim Ekranı mı, Liste mi?
-            if (!data.has_interests) {
-                showScreen('interest-section');
-            } else {
-                showScreen('dashboard-section');
-                renderEvents(data);
-            }
+        resultsArea.innerHTML = ''; // Temizle
 
-        } catch (error) {
-            // HATA VARSA EKRANA YAZ (Boş kalmasın)
-            document.getElementById('loading-screen').innerHTML = `
-                <div style="background:#ffddd0; padding:20px; border-radius:10px; color:#d8000c;">
-                    <h3>⚠️ Bir Hata Oluştu</h3>
-                    <p>${error.message}</p>
-                    <small>Lütfen Docker'ı yeniden başlatıp sayfayı yenileyin.</small>
-                </div>
-            `;
-        }
-    }
-
-    function showScreen(id) {
-        document.getElementById('interest-section').classList.add('hidden');
-        document.getElementById('dashboard-section').classList.add('hidden');
-        document.getElementById(id).classList.remove('hidden');
-    }
-
-    async function saveInterests() {
-        const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-        const tags = Array.from(checkboxes).map(cb => cb.value);
-
-        if (tags.length === 0) { alert("Lütfen en az bir tane seç!"); return; }
-
-        await fetch('/api/student/interests/', {
-            method: 'POST',
-            body: JSON.stringify({ tags: tags })
-        });
-        
-        fetchData(); // Sayfayı yenilemeden güncelle
-    }
-
-    // TEST İÇİN SIFIRLAMA
-    async function resetInterests() {
-        if(!confirm("İlgi alanlarını silip başa dönmek istiyor musun?")) return;
-        await fetch('/api/student/reset/', { method: 'POST' });
-        fetchData();
-    }
-
-    function renderEvents(data) {
-        const listDiv = document.getElementById('event-list');
-        document.getElementById('dashboard-title').innerText = data.message;
-        listDiv.innerHTML = "";
-
-        if (!data.recommendations || data.recommendations.length === 0) {
-            listDiv.innerHTML = "<div class='card'>Bu kategorilerde henüz etkinlik yok :(</div>";
+        if (data.results.length === 0) {
+            resultsArea.innerHTML = '<div class="col-12 text-center text-warning"><h5>😔 Üzgünüm, buna uygun bir etkinlik bulamadım.</h5></div>';
             return;
         }
 
-        data.recommendations.forEach(event => {
-            const date = new Date(event.date).toLocaleString('tr-TR');
-            const tags = event.tags.map(t => `<span>${t}</span>`).join('');
-            
-            listDiv.innerHTML += `
-                <div class="event-item">
-                    <h3>${event.title}</h3>
-                    <p>${event.description}</p>
-                    <div style="display:flex; justify-content:space-between; margin-top:10px; align-items:center;">
-                        <small style="color:#666;">📅 ${date}</small>
-                        <div class="tags">${tags}</div>
+        data.results.forEach(event => {
+            // Renk seçimi (Skora göre)
+            let badgeClass = "bg-secondary";
+            let scoreInt = parseInt(event.score.replace('%', ''));
+            if(scoreInt > 50) badgeClass = "bg-success";
+            else if(scoreInt > 30) badgeClass = "bg-warning text-dark";
+
+            const cardHTML = `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow border-0 hover-effect">
+                        <div class="card-header bg-white border-0 pt-3">
+                            <span class="badge ${badgeClass} float-end">
+                                <i class="fas fa-brain"></i> AI Skoru: ${event.score}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold text-primary">${event.title}</h5>
+                            <p class="card-text text-muted">${event.description}</p>
+                            <div class="mt-3">
+                                ${event.tags.map(tag => `<span class="badge bg-light text-dark border me-1">#${tag}</span>`).join('')}
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
+            resultsArea.innerHTML += cardHTML;
         });
+
+    } catch (error) {
+        console.error(error);
+        resultsArea.innerHTML = '<div class="alert alert-danger">Bir hata oluştu!</div>';
     }
+}
+
+// Enter tuşu ile arama
+document.getElementById('aiInput').addEventListener("keypress", function(event) {
+  if (event.key === "Enter") {
+    searchAI();
+  }
+});
 </script>
 
-</body>
-</html>
+<style>
+    .hover-effect:hover {
+        transform: translateY(-5px);
+        transition: transform 0.3s ease;
+    }
+</style>
+{% endblock %}

@@ -1,20 +1,21 @@
-# Python gereksizleri
+# Python & Django
 __pycache__/
-*.py[cod]
-*$py.class
-
-# Sanal ortam (Yüklenmemeli)
+*.pyc
+*.pyo
+*.pyd
+db.sqlite3
+*.log
+.venv
 venv/
 env/
+
+# Çevre Değişkenleri (ŞİFRELER GİT'E GİTMESİN!)
 .env
 
-# Veritabanı (Herkesin kendi DB'si olmalı)
-db.sqlite3
-*.sqlite3
-
-# Docker veri klasörleri (Yüklenmemeli)
-postgres_data/
-
-# İşletim sistemi dosyaları
+# İşletim Sistemi ve IDE
 .DS_Store
-Thumbs.db
+.vscode/
+.idea/
+
+# Docker (Eğer volume dosyaları yerelde tutuluyorsa)
+postgres_data/
