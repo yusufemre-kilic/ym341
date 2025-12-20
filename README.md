@@ -4,8 +4,7 @@
 
 Bu proje, geleneksel veritabanı sorgularının ötesine geçerek, **NLP (Doğal Dil İşleme)** ve **Graph Theory (Çizge Teorisi)** kullanarak etkinlikler arasındaki anlamsal ilişkileri analiz eden yeni nesil bir yönetim sistemidir.
 
-![Graph View](./backend/static/graph-preview.png)
-*(Buraya Graph ekran görüntünü ekleyebilirsin)*
+![Graph View](backend/staticfiles/images/graph-preview.png)
 
 ## 🚀 Projenin Teknik Derinliği (Key Engineering Features)
 
