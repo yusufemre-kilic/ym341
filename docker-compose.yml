@@ -5,17 +5,17 @@ services:
     env_file: ".env"
     volumes:
       - ./backend:/app
-      # 👇 BU SATIR EKLENDİ: Django statikleri buraya koyacak
       - static_volume:/app/staticfiles
     networks:
       - network
+    depends_on:
+      - db
 
   nginx:
     build:
       context: ./nginx
     volumes:
       - ./frontend:/usr/share/nginx/html
-      # 👇 BU SATIR EKLENDİ: Nginx statikleri buradan okuyacak (Tünelin ucu)
       - static_volume:/app/staticfiles
     ports:
       - "80:80"
@@ -25,12 +25,17 @@ services:
       - network
 
   db:
-    image: postgres:17-alpine
+    image: postgres:15
     env_file: ".env"
     volumes:
       - db_data:/var/lib/postgresql/data
     networks:
       - network
+    # 👇 İŞTE EKSİK OLAN KISIM BURASIYDI!
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
 
 networks:
   network:
@@ -38,4 +43,4 @@ networks:
 
 volumes:
   db_data:
-  static_volume:  # 👈 BU SATIR EKLENDİ: Ortak havuz oluşturuldu
+  static_volume:
