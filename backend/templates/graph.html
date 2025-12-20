@@ -75,7 +75,12 @@
             <p>Yapay zeka tarafından analiz edilen etkinliklerin anlamsal ilişki haritası. Çizgi kalınlığı, benzerlik oranını gösterir.</p>
             <small class="text-muted mt-2 d-block"><i class="fas fa-mouse"></i> Zoom: Scroll | <i class="fas fa-hand-paper"></i> Pan: Sürükle</small>
         </div>
-
+        <div class="info-panel" style="top: 150px; border-left-color: #00ff9d;">
+            <h4><i class="fas fa-chart-pie"></i> Veri Analitiği</h4>
+            <div id="stats-content">
+                <p>Hesaplanıyor...</p>
+            </div>
+        </div>
         <div id="loading" class="loading-overlay">
             <div class="spinner-border mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
             <span>AI Verileri İşliyor...</span>
@@ -98,40 +103,29 @@
         fetch('/api/graph-data/')
             .then(response => response.json())
             .then(data => {
-                loading.style.opacity = '0';
-                setTimeout(() => loading.style.display = 'none', 500);
-
+                
+                // 1. DÜĞÜMLERİ HAZIRLA
                 const processedNodes = data.nodes.map(node => ({
                     id: node.id,
-                    label: node.label,
+                    title: `<strong>${node.label}</strong>`, // Mouse gelince yazı çıkar
                     shape: 'dot',
-                    size: 25,
+                    size: 20,
                     color: {
-                        background: '#0f3460',
-                        border: '#00d4ff',
-                        highlight: { background: '#e94560', border: '#fff' },
-                        hover: { background: '#16213e', border: '#00d4ff' }
+                        background: node.color,
+                        border: '#ffffff',
+                        highlight: { background: '#ffffff', border: node.color},
+                        hover: { background: node.color, border: '#fff' }
                     },
-                    font: {
-                        color: '#ffffff',
-                        size: 14,
-                        face: 'Roboto',
-                        background: 'rgba(0,0,0,0.7)',
-                        strokeWidth: 0
-                    },
-                    borderWidth: 2,
-                    shadow: { enabled: true, color: 'rgba(0,212,255,0.5)', size: 10 }
+                    font: { size: 0 }, // Ekranda yazı kalabalığını engellemek için 0 yaptık
+                    borderWidth: 1,
+                    shadow: { enabled: true, color: node.color, size: 5 }
                 }));
 
-                // 🔥 GÜNCELLEME BURADA: Çizgiler artık daha kalın ve belirgin 🔥
+                // 2. KENARLARI (ÇİZGİLERİ) HAZIRLA
                 const processedEdges = data.edges.map(edge => ({
                     from: edge.from,
                     to: edge.to,
-                    // Kalınlığı benzerlik skoruna (0-1 arası) göre ayarlıyoruz.
-                    // Eskiden *5 idi, şimdi *15 yaptık. Minimum 1px kalınlık garantisi verdik.
                     width: Math.max(1, edge.value * 15), 
-                    
-                    // Rengi daha opak yaptık (0.1 -> 0.5)
                     color: { color: 'rgba(255, 255, 255, 0.5)', highlight: '#00d4ff' }, 
                     smooth: { type: 'continuous' },
                     title: edge.title
@@ -141,46 +135,98 @@
                 var graphData = { nodes: new vis.DataSet(processedNodes), edges: new vis.DataSet(processedEdges) };
 
                 var options = {
-                    nodes: {
-                        borderWidthSelected: 4
+                    nodes: { 
+                        borderWidthSelected: 2,
+                        shape: 'dot',
+                        size: 25,
+                        font: {
+                            size: 16, // Yazıları biraz büyüttük, okunur olsun
+                            color: '#ffffff',
+                            strokeWidth: 2,
+                            strokeColor: '#000000'
+                        }
+                    },
+                    edges: {
+                        width: 2,
+                        color: { inherit: 'from', opacity: 0.5 },
+                        smooth: { type: 'continuous' }
                     },
                     physics: {
                         enabled: true,
-                        forceAtlas2Based: {
-                            gravitationalConstant: -50,
-                            centralGravity: 0.01,
-                            springLength: 100,
-                            springConstant: 0.08
+                        solver: 'barnesHut',
+                        barnesHut: {
+                            // İTME GÜCÜ: Bunu artırarak (-30000) birbirlerinden kaçmalarını sağladık
+                            gravitationalConstant: -30000, 
+                            
+                            // MERKEZ ÇEKİMİ: Bunu düşürerek (0.005) ortaya toplanmalarını engelledik
+                            centralGravity: 0.005, 
+                            
+                            // YAY UZUNLUĞU: Bağlantı iplerini uzattık
+                            springLength: 300, 
+                            
+                            springConstant: 0.01, // Yaylar daha gevşek
+                            damping: 0.09,
+                            avoidOverlap: 1 // Üst üste binmeyi kesinlikle engelle
                         },
-                        maxVelocity: 50,
-                        solver: 'forceAtlas2Based',
-                        timestep: 0.35,
-                        stabilization: { iterations: 150 }
+                        stabilization: {
+                            enabled: true,
+                            iterations: 1000,
+                            updateInterval: 25,
+                            fit: true
+                        }
                     },
                     interaction: {
                         hover: true,
-                        hoverConnectedEdges: true,
-                        tooltipDelay: 200,
+                        tooltipDelay: 50,
                         zoomView: true,
-                        zoomSpeed: 0.1 // Yavaş zoom
+                        dragNodes: true,
+                        navigationButtons: true, // Sağ alta zoom butonları ekler
+                        keyboard: true
                     },
                     layout: {
+                        improvedLayout: false,
                         randomSeed: 2
                     }
                 };
 
+                // 4. NETWORK'Ü OLUŞTUR
                 var network = new vis.Network(container, graphData, options);
 
+                // 5. OLAYLARI DİNLE (EVENTS)
+                
+                // Yerleşim bitince Loading'i kapat ve fiziği durdur (Kasmaması için)
+                network.on("stabilized", function (params) {
+                    console.log("Yerleşim bitti, fizik durduruluyor.");
+                    network.setOptions({ physics: { enabled: false } });
+                    
+                    loading.style.opacity = '0';
+                    setTimeout(() => loading.style.display = 'none', 500);
+                });
+
+                // Sürüklemeye başlayınca fiziği aç
+                network.on("dragStart", function (params) {
+                    if (params.nodes.length > 0) network.setOptions({ physics: { enabled: true } });
+                });
+
+                // Sürükleme bitince fiziği kapat
+                network.on("dragEnd", function (params) {
+                   network.setOptions({ physics: { enabled: false } });
+                });
+
+                // Tıklama olayı
                 network.on("click", function (params) {
                     if (params.nodes.length > 0) {
                         const nodeId = params.nodes[0];
                         const clickedNode = processedNodes.find(n => n.id === nodeId);
                         
+                        // HTML içeriğini temizle (title içindeki <strong> tagini kaldır)
+                        const cleanLabel = clickedNode.title.replace(/<\/?[^>]+(>|$)/g, "");
+
                         Swal.fire({
-                            title: clickedNode.label,
-                            text: 'Bu etkinliğin diğerleriyle olan anlamsal bağları görselleştirilmiştir.',
+                            title: cleanLabel,
+                            text: 'Bu etkinliğin bağlantıları vurgulandı.',
                             icon: 'info',
-                            confirmButtonText: 'Detaylara Git',
+                            confirmButtonText: 'Tamam',
                             background: '#1a1a2e',
                             color: '#fff',
                             confirmButtonColor: '#00d4ff'
@@ -188,6 +234,24 @@
                     }
                 });
 
+                // 6. İSTATİSTİKLERİ HESAPLA
+                const clusterCounts = {};
+                data.nodes.forEach(node => {
+                    clusterCounts[node.group] = (clusterCounts[node.group] || 0) + 1;
+                });
+                
+                let statsHtml = "";
+                Object.keys(clusterCounts).forEach(groupId => {
+                    const count = clusterCounts[groupId];
+                    const percentage = ((count / data.nodes.length) * 100).toFixed(0);
+                    const colors = ["#ff0055", "#00d4ff", "#00ff9d", "#ffcc00", "#9d00ff"];
+                    const color = colors[groupId % colors.length];
+                    
+                    statsHtml += `<div style="margin-bottom:5px;">
+                        <span style="color:${color}">●</span> Küme ${groupId}: <strong>%${percentage}</strong> (${count} Etkinlik)
+                    </div>`;
+                });
+                document.getElementById('stats-content').innerHTML = statsHtml;            
             })
             .catch(error => {
                 console.error('Hata:', error);
