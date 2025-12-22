@@ -10,7 +10,7 @@ from sklearn.cluster import KMeans
 logger = logging.getLogger(__name__)
 
 # 1. MODELİ YÜKLE
-print("⏳ AI Modeli Yükleniyor... (Akamai Hızında Analiz İçin Hazırlanıyor)")
+print("⏳ AI Modeli Yükleniyor...")
 try:
     model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
     print("✅ AI Modeli Hazır!")
@@ -135,3 +135,89 @@ def generate_knowledge_graph():
 
     print(f"🕸️ Graph Oluşturuldu: {len(nodes_data)} Düğüm, {len(edge_list)} Bağlantı")
     return {"nodes": nodes_data, "edges": edge_list}
+
+def simulate_packet_routing(start_node_id, query_text, avoid_nodes=[]):
+    """
+    Leighton Ch 3.4.8: Fault Tolerance Routing
+    avoid_nodes: Çökmüş/Ölü düğümlerin ID listesi. Paket buralara ASLA uğramaz.
+    """
+    if model is None: return {"path": [], "log": []}
+
+    # 1. Hazırlık
+    query_embedding = model.encode(query_text, convert_to_tensor=True)
+    current_node = Event.objects.filter(id=start_node_id).first()
+    
+    # Eğer başlangıç düğümü bile ölü ise simülasyonu başlatma
+    if not current_node or current_node.id in avoid_nodes: 
+        return {"error": "Başlangıç düğümü çökmüş durumda! (System Failure)"}
+
+    path = [current_node.id]
+    steps_log = []
+    
+    # Ziyaret edilenlere hem geçmişi hem de ölü düğümleri ekle ki geri dönmesin
+    visited = {current_node.id}
+    for dead_id in avoid_nodes:
+        visited.add(dead_id)
+    
+    EDGE_THRESHOLD = 0.55 
+    MAX_HOPS = 20 
+
+    for step in range(MAX_HOPS):
+        # Mevcut Konum
+        current_text = f"{current_node.title} {current_node.description}"
+        current_emb = model.encode(current_text, convert_to_tensor=True)
+        current_dist_to_target = float(util.cos_sim(current_emb, query_embedding)[0][0])
+
+        steps_log.append({
+            "step": step + 1,
+            "node": current_node.title,
+            "score": f"{current_dist_to_target:.4f}"
+        })
+
+        # --- ADIM 1: Sağlam Komşuları Bul ---
+        # Ölü olanları (avoid_nodes) ve daha önce geçtiklerimizi (visited) hariç tut
+        all_events = Event.objects.exclude(id__in=visited)
+        if not all_events.exists(): 
+            steps_log.append({"info": "Gidecek hiçbir yer kalmadı."})
+            break
+
+        all_texts = [f"{e.title} {e.description}" for e in all_events]
+        all_embs = model.encode(all_texts, convert_to_tensor=True)
+        
+        neighbor_scores = util.cos_sim(current_emb, all_embs)[0]
+        
+        valid_neighbors = []
+        for i, score in enumerate(neighbor_scores):
+            if score > EDGE_THRESHOLD:
+                neighbor = all_events[i]
+                # EKSTRA GÜVENLİK: Eğer ölü listesindeyse kesinlikle alma
+                if neighbor.id not in avoid_nodes:
+                    valid_neighbors.append(neighbor)
+
+        if not valid_neighbors:
+            steps_log.append({"info": "FAULT DETECTED: Tüm yollar tıkalı veya çökmüş."})
+            break
+
+        # --- ADIM 2: En İyisini Seç (Greedy) ---
+        best_next_node = None
+        best_next_score = -1
+
+        for neighbor in valid_neighbors:
+            n_text = f"{neighbor.title} {neighbor.description}"
+            n_emb = model.encode(n_text, convert_to_tensor=True)
+            n_score_to_target = float(util.cos_sim(n_emb, query_embedding)[0][0])
+            
+            if n_score_to_target > best_next_score:
+                best_next_score = n_score_to_target
+                best_next_node = neighbor
+
+        # --- ADIM 3: İlerle ---
+        if best_next_node:
+            current_node = best_next_node
+            visited.add(current_node.id)
+            path.append(current_node.id)
+        else:
+            steps_log.append({"info": "Path blocked due to failures."})
+            break
+
+    return {"path": path, "log": steps_log}

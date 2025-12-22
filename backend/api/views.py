@@ -5,6 +5,7 @@ import json
 import os  # <--- YENİ: İşletim sistemi değişkenlerini (.env) okumak için
 from .models import Event, Tag 
 from .services import analyze_and_tag_event, semantic_search, generate_knowledge_graph
+from .services import simulate_packet_routing
 from django.utils import timezone
 import datetime
 
@@ -119,6 +120,24 @@ def graph_data_api(request):
 def graph_page_view(request):
     """Grafik görselleştirme sayfasını açar"""
     return render(request, 'graph.html')
+
+@csrf_exempt
+def routing_api(request):
+    """Routing Simülasyonu (Fault Tolerance Destekli)"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            start_node = data.get('start_node_id')
+            query = data.get('query')
+            
+            # Frontend'den gelen ölü düğüm listesi (yoksa boş liste)
+            dead_nodes = data.get('dead_nodes', []) 
+            
+            result = simulate_packet_routing(start_node, query, avoid_nodes=dead_nodes)
+            return JsonResponse(result)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+    return JsonResponse({"error": "POST required"}, status=400)
     
 # Yer tutucular
 @csrf_exempt

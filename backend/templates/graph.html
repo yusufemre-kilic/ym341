@@ -3,13 +3,14 @@
 {% block title %}Neural Network - AI Grafiği{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.css" />
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
 
 <style>
     #graph-wrapper {
         position: relative;
         width: 100%;
-        height: 75vh;
+        height: 80vh;
         background: radial-gradient(circle at center, #1a1a2e 0%, #16213e 100%);
         border-radius: 15px;
         box-shadow: 0 0 20px rgba(0,0,0,0.5);
@@ -17,33 +18,45 @@
         border: 1px solid #30475e;
     }
 
-    #network-container {
-        width: 100%;
-        height: 100%;
+    #network-container { width: 100%; height: 100%; outline: none; }
+
+    /* Tooltip */
+    div.vis-tooltip {
+        position: absolute;
+        visibility: visible;
+        padding: 8px 12px;
+        font-family: 'Roboto', sans-serif;
+        font-size: 13px;
+        color: #fff;
+        background-color: rgba(0, 0, 0, 0.9);
+        border: 1px solid #00d4ff;
+        border-radius: 5px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        z-index: 99999;
+        pointer-events: none;
     }
 
+    /* Loading */
     .loading-overlay {
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(26, 26, 46, 0.9);
+        background: rgba(26, 26, 46, 0.95);
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         color: #00d4ff;
         font-family: 'Orbitron', sans-serif;
-        z-index: 10;
+        z-index: 2000;
         transition: opacity 0.5s ease;
     }
 
+    /* Paneller */
     .info-panel {
         position: absolute;
-        top: 20px;
-        left: 20px;
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.7);
         padding: 15px;
         border-radius: 8px;
-        border-left: 4px solid #00d4ff;
         color: white;
         font-family: 'Roboto', sans-serif;
         backdrop-filter: blur(5px);
@@ -52,211 +65,542 @@
     }
 
     .info-panel h4 {
-        margin: 0 0 5px 0;
+        margin: 0 0 8px 0;
         font-family: 'Orbitron', sans-serif;
         color: #00d4ff;
-        font-size: 16px;
+        font-size: 15px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     
-    .info-panel p {
-        font-size: 12px;
-        color: #ccc;
-        margin: 0;
+    .info-panel p { font-size: 12px; color: #ccc; margin: 0; }
+
+    /* Alt Panel */
+    #algo-inspector {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 280px; 
+        min-height: 40px; 
+        max-height: 80vh; 
+        background: rgba(13, 17, 23, 0.98);
+        border-top: 1px solid #00d4ff;
+        color: #c9d1d9;
+        font-family: 'Courier New', Courier, monospace;
+        z-index: 1000;
+        display: none; 
+        grid-template-columns: 1fr 1fr 1.5fr;
+        gap: 20px;
+        padding: 20px;
+        padding-top: 30px;
+        box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+        overflow-y: hidden;
+    }
+
+    .resize-handle {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 15px;
+        background: linear-gradient(180deg, #1f242d 0%, #0d1117 100%);
+        cursor: row-resize;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-bottom: 1px solid #30363d;
+        z-index: 1002;
+    }
+    .resize-handle::after { content: "......"; color: #555; letter-spacing: 3px; font-size: 20px; margin-top: -12px; }
+
+    .panel-controls {
+        position: absolute;
+        top: 2px; right: 10px;
+        display: flex; gap: 10px;
+        z-index: 1005;
+    }
+    .panel-btn { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 16px; }
+    .panel-btn:hover { color: #fff; }
+
+    .algo-col { border-right: 1px solid #30363d; padding-right: 15px; overflow-y: auto; max-height: 100%; }
+    .algo-col:last-child { border-right: none; }
+    .algo-title { color: #00d4ff; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #30363d; }
+    .math-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; border-bottom: 1px dashed #21262d; }
+    .math-val { color: #ff7b72; font-weight: bold; }
+    .math-val-green { color: #7ee787; font-weight: bold; }
+    .edge-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+    .edge-table th { text-align: left; color: #8b949e; border-bottom: 1px solid #30363d; }
+    .edge-table td { padding: 4px 0; border-bottom: 1px solid #21262d; }
+    
+    /* Yanıp sönen kırmızı border animasyonu (Sabotaj Modu için) */
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+    }
+    .sabotage-active {
+        border-color: #ff0000 !important;
+        animation: pulse-red 2s infinite;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-2 p-0">
     
     <div id="graph-wrapper">
-        <div class="info-panel">
-            <h4><i class="fas fa-project-diagram"></i> Semantik Ağ</h4>
-            <p>Yapay zeka tarafından analiz edilen etkinliklerin anlamsal ilişki haritası. Çizgi kalınlığı, benzerlik oranını gösterir.</p>
-            <small class="text-muted mt-2 d-block"><i class="fas fa-mouse"></i> Zoom: Scroll | <i class="fas fa-hand-paper"></i> Pan: Sürükle</small>
-        </div>
-        <div class="info-panel" style="top: 150px; border-left-color: #00ff9d;">
-            <h4><i class="fas fa-chart-pie"></i> Veri Analitiği</h4>
-            <div id="stats-content">
-                <p>Hesaplanıyor...</p>
-            </div>
-        </div>
         <div id="loading" class="loading-overlay">
             <div class="spinner-border mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
             <span>AI Verileri İşliyor...</span>
         </div>
 
+        <div class="info-panel" style="top: 20px; left: 20px; border-left: 4px solid #00d4ff;">
+            <h4><i class="fas fa-project-diagram"></i> Semantik Ağ</h4>
+            <p>Yapay zeka tarafından analiz edilen etkinliklerin anlamsal ilişki haritası.</p>
+            <div class="mt-2 text-muted" style="font-size: 10px;">
+                <i class="fas fa-mouse"></i> Scroll: Zoom | Sürükle: Pan
+            </div>
+        </div>
+
+        <div class="info-panel" style="top: 140px; left: 20px; border-left: 4px solid #00ff9d;">
+            <h4><i class="fas fa-chart-pie"></i> Veri Analitiği</h4>
+            <div id="stats-content">Hesaplanıyor...</div>
+        </div>
+        
+        <div id="control-panel" class="info-panel" style="top: 20px; right: 20px; width: 250px; border-left: none; border-right: 4px solid #ff0055;">
+            <h4><i class="fas fa-network-wired"></i> Packet Routing</h4>
+            <p class="mb-2 text-muted">Leighton Ch 1.7: Greedy</p>
+            
+            <div class="input-group input-group-sm mb-2">
+                <input type="text" id="route-query" class="form-control bg-dark text-white border-secondary" placeholder="Hedef (Örn: Sanat)">
+                <button onclick="startRouting()" class="btn btn-danger"><i class="fas fa-play"></i></button>
+            </div>
+            <div id="routing-status" class="mt-1 mb-2 text-warning" style="font-size: 11px; min-height: 15px;"></div>
+            
+            <hr style="border-color: #444; margin: 5px 0;">
+            
+            <div class="d-flex justify-content-between align-items-center mb-2 p-2 rounded" style="background: rgba(255, 0, 0, 0.1); border: 1px dashed #ff5555;">
+                <span style="font-size: 11px; color: #ff5555; font-weight: bold;">💀 SABOTAJ MODU</span>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="sabotageSwitch" onchange="toggleSabotageMode()">
+                </div>
+            </div>
+            <div id="sabotage-msg" class="text-center text-muted mb-2" style="font-size: 9px;">Kapalı (Normal Mod)</div>
+
+            <hr style="border-color: #444; margin: 5px 0;">
+            
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span style="font-size: 11px;">Ch 1.8: Component Labels</span>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="clusterSwitch" onchange="toggleClusters()">
+                </div>
+            </div>
+
+            <p class="mb-1 text-muted" style="font-size: 10px;">Ch 2 & 3: Topologies</p>
+            <div class="btn-group w-100 btn-group-sm">
+                <button class="btn btn-outline-info" onclick="changeLayout('physics')"><i class="fas fa-atom"></i></button>
+                <button class="btn btn-outline-warning" onclick="changeLayout('mesh')"><i class="fas fa-th"></i></button>
+                <button class="btn btn-outline-success" onclick="changeLayout('circle')"><i class="fas fa-circle-notch"></i></button>
+            </div>
+        </div>
+
         <div id="network-container"></div>
     </div>
 
+    <div id="algo-inspector">
+        <div class="resize-handle" id="resize-handle"></div>
+        <div class="panel-controls">
+            <button class="panel-btn" onclick="minimizePanel()" title="Küçült"><i class="fas fa-minus"></i></button>
+            <button class="panel-btn close" onclick="closePanel()" title="Kapat"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="algo-col">
+            <div class="algo-title">I. Node Identity</div>
+            <div class="math-row"><span class="math-key">Node ID:</span> <span class="math-val" id="insp-id">-</span></div>
+            <div class="math-row"><span class="math-key">Label:</span> <span class="math-val-green" id="insp-label">-</span></div>
+            <div class="math-row"><span class="math-key">Cluster:</span> <span class="math-val" id="insp-group">-</span></div>
+            <div class="math-row"><span class="math-key">Status:</span> <span class="math-val" id="insp-status" style="color:#00ff9d">ACTIVE</span></div>
+        </div>
+
+        <div class="algo-col">
+            <div class="algo-title">II. Topology Metrics</div>
+            <div class="math-row"><span class="math-key">Degree d(v):</span> <span class="math-val" id="insp-degree">0</span></div>
+            <div class="math-row"><span class="math-key">Centrality:</span> <span class="math-val" id="insp-centrality">-</span></div>
+        </div>
+
+        <div class="algo-col">
+            <div class="algo-title">III. Adjacency List</div>
+            <table class="edge-table">
+                <thead><tr><th>Neighbor</th><th>Score</th><th>Status</th></tr></thead>
+                <tbody id="insp-edges-body"></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
+{% load static %}
+
 {% block extra_js %}
-<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
 
 <script>
+    let network = null;
+    let processedNodes = [];
+    let showClusters = false;
+    let isSabotageMode = false; // Sabotaj Modu Açık mı?
+    let rawEdges = []; 
+    let deadNodes = []; 
+
     document.addEventListener("DOMContentLoaded", function() {
         const loading = document.getElementById('loading');
+        const inspector = document.getElementById('algo-inspector');
         
+        // Resize Logic
+        const handle = document.getElementById('resize-handle');
+        let isResizing = false;
+        handle.addEventListener('mousedown', (e) => { isResizing = true; document.body.style.cursor = 'row-resize'; e.preventDefault(); });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const newHeight = window.innerHeight - e.clientY;
+            if (newHeight > 40 && newHeight < window.innerHeight - 100) inspector.style.height = `${newHeight}px`;
+        });
+        document.addEventListener('mouseup', () => { if(isResizing) { isResizing = false; document.body.style.cursor = 'default'; } });
+
         fetch('/api/graph-data/')
             .then(response => response.json())
             .then(data => {
-                
-                // 1. DÜĞÜMLERİ HAZIRLA
-                const processedNodes = data.nodes.map(node => ({
+                rawEdges = data.edges;
+
+                processedNodes = data.nodes.map(node => ({
                     id: node.id,
-                    title: `<strong>${node.label}</strong>`, // Mouse gelince yazı çıkar
+                    title: node.label, 
+                    label: " ", 
                     shape: 'dot',
                     size: 20,
+                    group: node.group,
                     color: {
                         background: node.color,
                         border: '#ffffff',
                         highlight: { background: '#ffffff', border: node.color},
                         hover: { background: node.color, border: '#fff' }
                     },
-                    font: { size: 0 }, // Ekranda yazı kalabalığını engellemek için 0 yaptık
                     borderWidth: 1,
                     shadow: { enabled: true, color: node.color, size: 5 }
                 }));
 
-                // 2. KENARLARI (ÇİZGİLERİ) HAZIRLA
                 const processedEdges = data.edges.map(edge => ({
                     from: edge.from,
                     to: edge.to,
-                    width: Math.max(1, edge.value * 15), 
-                    color: { color: 'rgba(255, 255, 255, 0.5)', highlight: '#00d4ff' }, 
+                    value: edge.value,
+                    width: Math.max(1, edge.value * 10), 
+                    color: { color: 'rgba(255, 255, 255, 0.2)', highlight: '#00d4ff' }, 
                     smooth: { type: 'continuous' },
-                    title: edge.title
+                    title: `Benzerlik: %${(edge.value * 100).toFixed(1)}`
                 }));
 
-                var container = document.getElementById('network-container');
-                var graphData = { nodes: new vis.DataSet(processedNodes), edges: new vis.DataSet(processedEdges) };
-
-                var options = {
-                    nodes: { 
-                        borderWidthSelected: 2,
-                        shape: 'dot',
-                        size: 25,
-                        font: {
-                            size: 16, // Yazıları biraz büyüttük, okunur olsun
-                            color: '#ffffff',
-                            strokeWidth: 2,
-                            strokeColor: '#000000'
-                        }
-                    },
-                    edges: {
-                        width: 2,
-                        color: { inherit: 'from', opacity: 0.5 },
-                        smooth: { type: 'continuous' }
-                    },
+                const container = document.getElementById('network-container');
+                const graphData = { nodes: new vis.DataSet(processedNodes), edges: new vis.DataSet(processedEdges) };
+                
+                const options = {
+                    nodes: { borderWidthSelected: 2, shape: 'dot', size: 25 },
                     physics: {
                         enabled: true,
                         solver: 'barnesHut',
-                        barnesHut: {
-                            // İTME GÜCÜ: Bunu artırarak (-30000) birbirlerinden kaçmalarını sağladık
-                            gravitationalConstant: -30000, 
-                            
-                            // MERKEZ ÇEKİMİ: Bunu düşürerek (0.005) ortaya toplanmalarını engelledik
-                            centralGravity: 0.005, 
-                            
-                            // YAY UZUNLUĞU: Bağlantı iplerini uzattık
-                            springLength: 300, 
-                            
-                            springConstant: 0.01, // Yaylar daha gevşek
-                            damping: 0.09,
-                            avoidOverlap: 1 // Üst üste binmeyi kesinlikle engelle
-                        },
-                        stabilization: {
-                            enabled: true,
-                            iterations: 1000,
-                            updateInterval: 25,
-                            fit: true
-                        }
+                        barnesHut: { gravitationalConstant: -30000, centralGravity: 0.005, springLength: 300, springConstant: 0.01, damping: 0.09, avoidOverlap: 1 },
+                        stabilization: { enabled: true, iterations: 1000 }
                     },
-                    interaction: {
-                        hover: true,
-                        tooltipDelay: 50,
-                        zoomView: true,
-                        dragNodes: true,
-                        navigationButtons: true, // Sağ alta zoom butonları ekler
-                        keyboard: true
-                    },
-                    layout: {
-                        improvedLayout: false,
-                        randomSeed: 2
-                    }
+                    interaction: { hover: true, tooltipDelay: 50, zoomView: true, dragNodes: true }
                 };
 
-                // 4. NETWORK'Ü OLUŞTUR
-                var network = new vis.Network(container, graphData, options);
+                network = new vis.Network(container, graphData, options);
 
-                // 5. OLAYLARI DİNLE (EVENTS)
-                
-                // Yerleşim bitince Loading'i kapat ve fiziği durdur (Kasmaması için)
-                network.on("stabilized", function (params) {
-                    console.log("Yerleşim bitti, fizik durduruluyor.");
-                    network.setOptions({ physics: { enabled: false } });
-                    
+                network.on("stabilized", function () {
                     loading.style.opacity = '0';
                     setTimeout(() => loading.style.display = 'none', 500);
                 });
 
-                // Sürüklemeye başlayınca fiziği aç
                 network.on("dragStart", function (params) {
-                    if (params.nodes.length > 0) network.setOptions({ physics: { enabled: true } });
+                     if (params.nodes.length > 0) {
+                        network.setOptions({ physics: { enabled: true } });
+                        if(!isSabotageMode) updateInspector(params.nodes[0]);
+                     }
                 });
 
-                // Sürükleme bitince fiziği kapat
-                network.on("dragEnd", function (params) {
-                   network.setOptions({ physics: { enabled: false } });
-                });
-
-                // Tıklama olayı
+                // --- 🌟 TIKLAMA MANTIĞI (SABOTAJ vs BİLGİ) ---
                 network.on("click", function (params) {
                     if (params.nodes.length > 0) {
                         const nodeId = params.nodes[0];
-                        const clickedNode = processedNodes.find(n => n.id === nodeId);
                         
-                        // HTML içeriğini temizle (title içindeki <strong> tagini kaldır)
-                        const cleanLabel = clickedNode.title.replace(/<\/?[^>]+(>|$)/g, "");
-
-                        Swal.fire({
-                            title: cleanLabel,
-                            text: 'Bu etkinliğin bağlantıları vurgulandı.',
-                            icon: 'info',
-                            confirmButtonText: 'Tamam',
-                            background: '#1a1a2e',
-                            color: '#fff',
-                            confirmButtonColor: '#00d4ff'
-                        });
+                        if (isSabotageMode) {
+                            // Sabotaj Modu AÇIK: Düğümü Patlat
+                            toggleDeadNode(nodeId);
+                        } else {
+                            // Sabotaj Modu KAPALI: Bilgi Göster
+                            updateInspector(nodeId);
+                        }
                     }
                 });
 
-                // 6. İSTATİSTİKLERİ HESAPLA
-                const clusterCounts = {};
-                data.nodes.forEach(node => {
-                    clusterCounts[node.group] = (clusterCounts[node.group] || 0) + 1;
+                network.on("beforeDrawing", function (ctx) {
+                    if (!showClusters) return;
+                    const clusters = {};
+                    processedNodes.forEach(node => {
+                        const pos = network.getPositions([node.id])[node.id];
+                        if (pos) { 
+                            if (!clusters[node.group]) clusters[node.group] = [];
+                            clusters[node.group].push({x: pos.x, y: pos.y});
+                        }
+                    });
+
+                    Object.keys(clusters).forEach(groupId => {
+                        const points = clusters[groupId];
+                        if (points.length < 3) return; 
+                        const hull = getConvexHull(points);
+                        const groupNode = processedNodes.find(n => n.group == groupId);
+                        const color = groupNode ? groupNode.color.background : '#aaaaaa';
+
+                        ctx.beginPath();
+                        ctx.moveTo(hull[0].x, hull[0].y);
+                        for (let i = 1; i < hull.length; i++) ctx.lineTo(hull[i].x, hull[i].y);
+                        ctx.closePath();
+                        ctx.fillStyle = hexToRgba(color, 0.2); 
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]); 
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    });
                 });
-                
-                let statsHtml = "";
-                Object.keys(clusterCounts).forEach(groupId => {
-                    const count = clusterCounts[groupId];
-                    const percentage = ((count / data.nodes.length) * 100).toFixed(0);
-                    const colors = ["#ff0055", "#00d4ff", "#00ff9d", "#ffcc00", "#9d00ff"];
-                    const color = colors[groupId % colors.length];
-                    
-                    statsHtml += `<div style="margin-bottom:5px;">
-                        <span style="color:${color}">●</span> Küme ${groupId}: <strong>%${percentage}</strong> (${count} Etkinlik)
-                    </div>`;
-                });
-                document.getElementById('stats-content').innerHTML = statsHtml;            
+
+                calculateStats(data.nodes);
             })
-            .catch(error => {
-                console.error('Hata:', error);
-                loading.innerHTML = '<span class="text-danger">Veri yüklenemedi!</span>';
-            });
+            .catch(error => { console.error(error); loading.innerHTML = '<span class="text-danger">Veri yüklenemedi!</span>'; });
     });
+
+    // --- FONKSİYONLAR ---
+
+    // Sabotaj Modunu Aç/Kapa
+    window.toggleSabotageMode = function() {
+        isSabotageMode = document.getElementById('sabotageSwitch').checked;
+        const msg = document.getElementById('sabotage-msg');
+        const panel = document.getElementById('control-panel');
+        
+        if (isSabotageMode) {
+            msg.innerText = "AÇIK! Düğüme tıklayarak yok et.";
+            msg.style.color = "#ff5555";
+            panel.classList.add("sabotage-active"); // Kırmızı çerçeve animasyonu
+            network.setOptions({ interaction: { hover: false } }); // Hover'ı kapat karışmasın
+        } else {
+            msg.innerText = "Kapalı (Normal Mod)";
+            msg.style.color = "#8b949e";
+            panel.classList.remove("sabotage-active");
+            network.setOptions({ interaction: { hover: true } });
+        }
+    };
+
+    function toggleDeadNode(nodeId) {
+        const index = deadNodes.indexOf(nodeId);
+        
+        // Bağlı kenarları bul
+        const connectedEdges = rawEdges.filter(e => e.from === nodeId || e.to === nodeId);
+        const edgeUpdates = [];
+
+        if (index === -1) {
+            // ÖLDÜR
+            deadNodes.push(nodeId);
+            network.body.data.nodes.update({
+                id: nodeId,
+                color: { background: '#000000', border: '#ff0000' }, 
+                shape: 'hexagon',
+                size: 30
+            });
+            // Kenarları "Kesik Çizgi" (Dashed) yap ki koptuğu belli olsun
+            // Vis.js edge ID'si otomatik atanır, o yüzden veriden bulup güncellememiz lazım
+            // (Burada basitlik için DataSet üzerinden edge'leri tarayıp güncelleyeceğiz)
+            const allEdges = network.body.data.edges.get();
+            allEdges.forEach(edge => {
+                if (edge.from === nodeId || edge.to === nodeId) {
+                    edgeUpdates.push({ id: edge.id, dashes: true, color: { color: '#ff0000', opacity: 0.3 } });
+                }
+            });
+            network.body.data.edges.update(edgeUpdates);
+
+        } else {
+            // DİRİLT
+            deadNodes.splice(index, 1);
+            const original = processedNodes.find(n => n.id === nodeId);
+            if(original) {
+                network.body.data.nodes.update({
+                    id: nodeId,
+                    color: original.color,
+                    shape: 'dot',
+                    size: 20
+                });
+            }
+            // Kenarları düzelt
+            const allEdges = network.body.data.edges.get();
+            allEdges.forEach(edge => {
+                if (edge.from === nodeId || edge.to === nodeId) {
+                    edgeUpdates.push({ id: edge.id, dashes: false, color: { color: 'rgba(255, 255, 255, 0.2)' } });
+                }
+            });
+            network.body.data.edges.update(edgeUpdates);
+        }
+    }
+
+    window.startRouting = function() {
+        const query = document.getElementById('route-query').value;
+        if(!query) { alert("Hedef giriniz!"); return; }
+        
+        const aliveNodes = processedNodes.filter(n => !deadNodes.includes(n.id)).map(n => n.id);
+        if (aliveNodes.length === 0) { alert("Tüm ağ çökmüş!"); return; }
+        
+        const startId = aliveNodes[Math.floor(Math.random() * aliveNodes.length)];
+        const statusDiv = document.getElementById('routing-status');
+        statusDiv.innerHTML = "Simüle ediliyor...";
+        statusDiv.style.color = "yellow";
+
+        fetch('/api/routing/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ start_node_id: startId, query: query, dead_nodes: deadNodes })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.error) { statusDiv.innerText = data.error; statusDiv.style.color = "red"; return; }
+            statusDiv.innerHTML = `Yol: ${data.path.length} Adım`;
+            statusDiv.style.color = "#00ff9d";
+            animatePath(data.path);
+        });
+    };
+
+    function animatePath(pathIds) {
+        let step = 0;
+        const updates = processedNodes.map(n => {
+            if (deadNodes.includes(n.id)) return {id: n.id}; 
+            return { id: n.id, color: {background: '#333', border: '#444'}, opacity: 0.2 };
+        });
+        network.body.data.nodes.update(updates);
+
+        function nextStep() {
+            if (step >= pathIds.length) return;
+            const nodeId = pathIds[step];
+            network.body.data.nodes.update({
+                id: nodeId, 
+                color: {background: '#ff0055', border: '#fff'},
+                size: 30, opacity: 1
+            });
+            network.focus(nodeId, { scale: 1.0, animation: { duration: 600 } });
+            updateInspector(nodeId);
+            step++;
+            setTimeout(nextStep, 1200);
+        }
+        nextStep();
+    }
+
+    window.toggleClusters = function() { showClusters = document.getElementById('clusterSwitch').checked; network.redraw(); };
+    window.closePanel = function() { document.getElementById('algo-inspector').style.display = 'none'; };
+    window.minimizePanel = function() {
+        const inspector = document.getElementById('algo-inspector');
+        if (inspector.offsetHeight < 60) inspector.style.height = "280px"; else inspector.style.height = "40px";
+    };
+    window.changeLayout = function(type) {
+        if(!network) return;
+        const allNodes = processedNodes.map(n => n.id);
+        const count = allNodes.length;
+        network.setOptions({ physics: { enabled: false } });
+        if (type === 'physics') { network.setOptions({ physics: { enabled: true } }); } 
+        else if (type === 'circle') {
+            const radius = count * 25; const angleStep = (2 * Math.PI) / count;
+            allNodes.forEach((id, index) => {
+                const angle = index * angleStep;
+                network.body.data.nodes.update({ id: id, x: radius * Math.cos(angle), y: radius * Math.sin(angle) });
+            });
+            network.fit({ animation: { duration: 1000 } });
+        } 
+        else if (type === 'mesh') {
+            const cols = Math.ceil(Math.sqrt(count)); const spacing = 200; 
+            allNodes.forEach((id, index) => {
+                const row = Math.floor(index / cols); const col = index % cols;
+                network.body.data.nodes.update({ id: id, x: col * spacing, y: row * spacing });
+            });
+            network.fit({ animation: { duration: 1000 } });
+        }
+    };
+
+    function updateInspector(nodeId) {
+        const inspector = document.getElementById('algo-inspector');
+        const node = processedNodes.find(n => n.id === nodeId);
+        if (!node) return; 
+
+        document.getElementById('insp-id').innerText = node.id;
+        const cleanTitle = node.title ? node.title.replace(/<\/?[^>]+(>|$)/g, "") : "-";
+        document.getElementById('insp-label').innerText = cleanTitle;
+        document.getElementById('insp-group').innerText = `Cluster #${node.group}`;
+        
+        const isDead = deadNodes.includes(nodeId);
+        const statusElem = document.getElementById('insp-status');
+        if(isDead) { statusElem.innerText = "DEAD (FAILED)"; statusElem.style.color = "red"; } 
+        else { statusElem.innerText = "ACTIVE"; statusElem.style.color = "#00ff9d"; }
+
+        const myEdges = rawEdges.filter(e => e.from === nodeId || e.to === nodeId);
+        document.getElementById('insp-degree').innerText = myEdges.length;
+
+        const tbody = document.getElementById('insp-edges-body');
+        tbody.innerHTML = '';
+        myEdges.sort((a,b) => b.value - a.value);
+        if(myEdges.length === 0) tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Bağlantı yok</td></tr>';
+
+        myEdges.forEach(edge => {
+            const neighborId = (edge.from === nodeId) ? edge.to : edge.from;
+            const nIsDead = deadNodes.includes(neighborId);
+            const score = edge.value;
+            const tr = document.createElement('tr');
+            let statusHtml = "";
+            if (nIsDead) statusHtml = '<span style="color:red">DEAD</span>';
+            else statusHtml = score > 0.55 ? '<span style="color:#7ee787">Güçlü</span>' : '<span style="color:#8b949e">Normal</span>';
+            tr.innerHTML = `<td>v${neighborId}</td><td style="font-family:monospace">${score.toFixed(4)}</td><td>${statusHtml}</td>`;
+            tbody.appendChild(tr);
+        });
+        inspector.style.display = 'grid';
+    }
+
+    function calculateStats(nodes) {
+        const counts = {};
+        nodes.forEach(n => counts[n.group] = (counts[n.group] || 0) + 1);
+        let html = "";
+        const colors = ["#ff0055", "#00d4ff", "#00ff9d", "#ffcc00", "#9d00ff"];
+        Object.keys(counts).forEach(k => { html += `<div><span style="color:${colors[k%5]}">●</span> Küme ${k}: ${counts[k]}</div>`; });
+        document.getElementById('stats-content').innerHTML = html;
+    }
+
+    function getConvexHull(points) {
+        points.sort((a, b) => a.x === b.x ? a.y - b.y : a.x - b.x);
+        const cross = (a, b, o) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+        const lower = [];
+        for (let point of points) {
+            while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0) lower.pop();
+            lower.push(point);
+        }
+        const upper = [];
+        for (let i = points.length - 1; i >= 0; i--) {
+            const point = points[i];
+            while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0) upper.pop();
+            upper.push(point);
+        }
+        upper.pop(); lower.pop();
+        return lower.concat(upper);
+    }
+
+    function hexToRgba(hex, alpha) {
+        let c;
+        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+            c= hex.substring(1).split('');
+            if(c.length== 3) c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+            c= '0x'+c.join('');
+            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+        }
+        return 'rgba(0,0,0,'+alpha+')';
+    }
 </script>
 {% endblock %}

@@ -1,21 +1,18 @@
-# Python & Django
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-db.sqlite3
+# Django
 *.log
-.venv
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+media/
+staticfiles/
+
+# Python
 venv/
 env/
-
-# Çevre Değişkenleri (ŞİFRELER GİT'E GİTMESİN!)
 .env
-
-# İşletim Sistemi ve IDE
 .DS_Store
+
+# IDE
 .vscode/
 .idea/
-
-# Docker (Eğer volume dosyaları yerelde tutuluyorsa)
-postgres_data/

@@ -25,7 +25,7 @@ class Command(BaseCommand):
         adjectives = ["İleri Seviye", "Başlangıç İçin", "Uluslararası", "Geleneksel", "Yenilikçi", "Kampüs İçi"]
 
         # Kaç tane veri üretelim? (Şimdilik 100 yapalım, istersen 1000 yap)
-        TOTAL_EVENTS = 30
+        TOTAL_EVENTS = 10
 
         for i in range(TOTAL_EVENTS):
             topic, category = random.choice(topics)

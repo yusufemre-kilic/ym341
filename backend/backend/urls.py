@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/verify-teacher/', verify_teacher_password, name='verify_teacher'),
     path('api/verify-student/', verify_student_password, name='verify_student'),
     path('api/events/recommend/', recommend_events, name='recommend_events'),
+    path('api/routing/', views.routing_api, name='routing_api'),
     path('api/student/interests/', save_interests, name='save_interests'),
     path('api/student/reset/', reset_interests, name='reset_interests'),
     path('api/search/', views.search_events_api, name='search_api'),
