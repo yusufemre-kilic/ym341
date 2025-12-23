@@ -1,121 +1,231 @@
-{% extends 'base.html' %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kampüs AI - Giriş</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --mit-red: #A31F34;
+            --mit-dark-red: #8a1b2c;
+            --mit-black: #000000;
+            --mit-gray: #8b949e;
+            --light-gray: #f5f5f5;
+        }
 
-{% block title %}Giriş Yap - Kampüs AI{% endblock %}
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
 
-{% block content %}
-<div class="row justify-content-center mt-5">
-    <div class="col-md-6 col-lg-4">
-        <div class="card shadow-lg border-0 rounded-3">
-            <div class="card-body p-5 text-center">
-                
-                <h2 class="mb-4 text-primary"><i class="fas fa-door-open"></i> Giriş Yap</h2>
+        /* HEADER */
+        .site-nav {
+            background-color: #fff;
+            border-bottom: 1px solid #ddd;
+            padding: 15px 0;
+            border-top: 4px solid var(--mit-red);
+        }
 
-                <div class="btn-group w-100 mb-4" role="group">
-                    <button type="button" class="btn btn-primary" id="btnStudent" onclick="showForm('student')">
-                        <i class="fas fa-user-graduate"></i> Öğrenci
-                    </button>
-                    <button type="button" class="btn btn-outline-primary" id="btnTeacher" onclick="showForm('teacher')">
-                        <i class="fas fa-chalkboard-teacher"></i> Öğretmen
-                    </button>
-                </div>
-                <li class="nav-item">
-                    <a class="nav-link text-primary fw-bold" href="/graph/">
-                        <i class="fas fa-project-diagram"></i> AI Ağı
-                    </a>
-                </li>
-                <div id="studentForm">
-                    <p class="text-muted">Öğrenci girişi yapın.</p>
-                    <div class="mb-3 text-start">
-                        <label class="form-label">Email</label>
-                        <input type="email" id="studentEmail" class="form-control" value="ogrenci@univ.edu.tr">
-                    </div>
-                    <div class="mb-3 text-start">
-                        <label class="form-label">Şifre</label>
-                        <input type="password" id="studentPass" class="form-control" value="12345">
-                    </div>
-                    <button onclick="loginStudent()" class="btn btn-primary w-100 py-2 fw-bold">
-                        Giriş Yap
-                    </button>
-                </div>
+        .site-nav__width {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
 
-                <div id="teacherForm" style="display: none;">
-                    <p class="text-muted">Etkinlik yönetimi için giriş yapın.</p>
-                    <div class="mb-3 text-start">
-                        <label class="form-label">Öğretmen Email</label>
-                        <input type="email" id="teacherEmail" class="form-control" value="ogretmen@univ.edu.tr">
-                    </div>
-                    <div class="mb-3 text-start">
-                        <label class="form-label">Şifre</label>
-                        <input type="password" id="teacherPass" class="form-control" value="admin123">
-                    </div>
-                    <button onclick="loginTeacher()" class="btn btn-dark w-100 py-2 fw-bold">
-                        Yönetici Girişi
-                    </button>
-                </div>
+        .mit-logo { width: 60px; height: auto; fill: var(--mit-black); }
 
+        .site-nav__links { list-style: none; display: flex; gap: 25px; margin: 0; padding: 0; }
+        .site-nav__link { text-decoration: none; color: #000; font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.3s; }
+        .site-nav__link:hover { color: var(--mit-red); text-decoration: underline; }
+
+        /* LOGIN AREA */
+        .login-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: url('https://img.freepik.com/free-vector/white-abstract-background_23-2148810113.jpg');
+            background-size: cover;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        .login-card {
+            background: white;
+            padding: 45px;
+            border-radius: 2px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            width: 100%;
+            max-width: 400px;
+            border-top: 6px solid var(--mit-red);
+            position: relative;
+        }
+
+        .login-card h2 { margin-top: 0; color: var(--mit-black); font-size: 28px; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .login-card p { color: #666; font-size: 14px; margin-bottom: 25px; }
+
+        /* TABS */
+        .tabs { display: flex; margin-bottom: 25px; border-bottom: 2px solid #eee; }
+        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: 600; color: #aaa; transition: all 0.3s; text-transform: uppercase; font-size: 13px; }
+        .tab:hover { color: var(--mit-red); background-color: #fff5f5; }
+        .tab.active { color: var(--mit-red); border-bottom: 3px solid var(--mit-red); margin-bottom: -2px; }
+
+        /* FORM */
+        .form-group { margin-bottom: 20px; }
+        .form-control { width: 100%; padding: 14px; border: 1px solid #ccc; border-radius: 2px; font-size: 15px; box-sizing: border-box; background-color: #f9f9f9; transition: all 0.3s; }
+        .form-control:focus { border-color: var(--mit-red); background-color: #fff; outline: none; box-shadow: 0 0 0 3px rgba(163, 31, 52, 0.1); }
+
+        .btn-login { width: 100%; padding: 14px; background-color: var(--mit-red); color: white; border: none; border-radius: 2px; font-size: 16px; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; transition: background-color 0.3s, transform 0.2s; }
+        .btn-login:hover { background-color: var(--mit-dark-red); transform: translateY(-1px); }
+
+        #error-msg { background-color: #ffe6e6; color: var(--mit-red); padding: 10px; border-radius: 4px; font-size: 13px; margin-top: 15px; display: none; text-align: center; border: 1px solid #ffcccc; }
+
+        /* FOOTER */
+        .site-footer { background-color: #000; color: #fff; padding: 50px 0; font-size: 14px; border-top: 5px solid var(--mit-red); }
+        .footer-width { max-width: 1200px; margin: 0 auto; padding: 0 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; }
+        .footer-col { margin-bottom: 20px; }
+        .footer-logo svg { width: 70px; fill: #fff; margin-bottom: 15px; }
+        .footer-nav ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 20px; }
+        .footer-nav a { color: #ccc; text-decoration: none; font-weight: 500; transition: color 0.2s; }
+        .footer-nav a:hover { color: var(--mit-red); }
+        .footer-address { color: #777; margin-top: 15px; font-size: 12px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+    <nav class="site-nav">
+        <div class="site-nav__width">
+            <a href="#" class="site-nav__logo-link">
+                <svg class="mit-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 867.217 200">
+                    <path d="M570.185,160l7.348,26.119c.873,3.347,1.746,6.693,2.328,9.458.364,1.6.655,3.128.946,4.584h.146c.291-1.455.582-2.983.946-4.584.582-2.765,1.31-6.111,2.255-9.458L591.5,160h15.06v52.019H596.74V182.19c0-2.11,0-4.729.218-6.984.073-1.237.146-2.546.218-3.783h-.146c-.218,1.237-.509,2.4-.728,3.565-.509,2.037-1.018,4.365-1.528,6.33l-8.949,30.7H575.715l-8.73-30.7c-.582-1.964-1.019-4.292-1.528-6.33-.218-1.164-.509-2.328-.728-3.565h-.145c.073,1.237.145,2.546.218,3.783.073,2.255.218,4.874.218,6.984v29.829h-9.676V160Zm-285.34,187.268H326.46V160H284.845Zm-62.423-41.615h41.615V160H222.423ZM160,347.268h41.615V160H160Zm249.691,0h41.615V222.423H409.691Z" style="fill:#000;"/>
+                </svg>
+            </a>
+            <ul class="site-nav__links">
+                <li><a href="#" class="site-nav__link">Education</a></li>
+                <li><a href="#" class="site-nav__link">Research</a></li>
+                <li><a href="#" class="site-nav__link">Innovation</a></li>
+                <li><a href="#" class="site-nav__link">Campus Life</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="login-wrapper">
+        <div class="login-card">
+            <h2>KAMPÜS AI</h2>
+            <p>Akıllı Etkinlik & Bilgi Grafiği Sistemi</p>
+
+            <div class="tabs">
+                <div class="tab active" onclick="setRole('ogrenci')">Öğrenci</div>
+                <div class="tab" onclick="setRole('ogretmen')">Öğretmen</div>
             </div>
+
+            <div class="form-group">
+                <input type="email" id="email" class="form-control" placeholder="E-posta Adresi">
+            </div>
+            <div class="form-group">
+                <input type="password" id="password" class="form-control" placeholder="Şifre">
+            </div>
+            
+            <button onclick="handleLogin()" class="btn-login">GİRİŞ YAP</button>
+            <div id="error-msg"></div>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-    // Sekmeler Arası Geçiş Fonksiyonu
-    function showForm(type) {
-        if (type === 'student') {
-            document.getElementById('studentForm').style.display = 'block';
-            document.getElementById('teacherForm').style.display = 'none';
-            
-            document.getElementById('btnStudent').className = 'btn btn-primary';
-            document.getElementById('btnTeacher').className = 'btn btn-outline-primary';
-        } else {
-            document.getElementById('studentForm').style.display = 'none';
-            document.getElementById('teacherForm').style.display = 'block';
-            
-            document.getElementById('btnTeacher').className = 'btn btn-primary';
-            document.getElementById('btnStudent').className = 'btn btn-outline-primary';
+    <footer class="site-footer">
+        <div class="footer-width">
+            <div class="footer-col">
+                <a href="#" class="footer-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="50" height="30" viewBox="0 0 377.778 200">
+                        <path d="M360,360h44.445V226.667H360Zm66.667-155.556H537.778V160H426.667ZM360,160h44.445v44.444H360ZM293.333,360h44.444V160H293.333Zm-66.667-44.444h44.444V160H226.667ZM160,360h44.445V160H160Zm266.667,0h44.445V226.667H426.667Z" transform="translate(-160 -160)" fill="#fff"/>
+                    </svg>
+                </a>
+                <p class="site-footer__name">Massachusetts Institute of Technology<br>Data Science Lab</p>
+            </div>
+            <div class="footer-col">
+                <nav class="footer-nav">
+                    <ul>
+                        <li><a href="#">Education</a></li>
+                        <li><a href="#">Research</a></li>
+                        <li><a href="#">Innovation</a></li>
+                        <li><a href="#">Admissions + Aid</a></li>
+                        <li><a href="#">Campus Life</a></li>
+                        <li><a href="#">News</a></li>
+                        <li><a href="#">Alumni</a></li>
+                        <li><a href="#">About MIT</a></li>
+                    </ul>
+                </nav>
+                <div class="footer-address">
+                    77 Massachusetts Avenue, Cambridge, MA, USA <br>
+                    © 2025 Kampüs AI Project - YM341
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let currentRole = 'ogrenci';
+
+        function setRole(role) {
+            currentRole = role;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('error-msg').style.display = 'none';
         }
-    }
 
-    // Öğrenci Girişi
-    async function loginStudent() {
-        const email = document.getElementById('studentEmail').value;
-        const password = document.getElementById('studentPass').value;
-        
-        try {
-            const response = await fetch('/api/verify-student/', {
+        function handleLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-msg');
+            const btn = document.querySelector('.btn-login');
+
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> KONTROL EDİLİYOR...';
+            btn.disabled = true;
+            errorDiv.style.display = 'none';
+
+            // API Seçimi
+            let endpoint = currentRole === 'ogrenci' 
+                ? '/api/verify-student/' 
+                : '/api/verify-teacher/';
+
+            fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email: email, password: password })
+            })
+            .then(response => {
+                if (response.ok) {
+                    // --- DÜZELTİLEN KISIM BURASI ---
+                    // Rol durumuna göre doğru sayfaya yönlendir
+                    if(currentRole === 'ogrenci') {
+                        window.location.href = '/ogrenci/';
+                    } else {
+                        window.location.href = '/ogretmen/';
+                    }
+                } else {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'Giriş başarısız');
+                    });
+                }
+            })
+            .catch(error => {
+                btn.innerHTML = 'GİRİŞ YAP';
+                btn.disabled = false;
+                errorDiv.innerText = "Hatalı e-posta veya şifre! Lütfen bilgilerinizi kontrol edin.";
+                errorDiv.style.display = 'block';
             });
-
-            if (response.ok) window.location.href = '/ogrenci/';
-            else alert("Hatalı öğrenci bilgileri!");
-        } catch (error) {
-            console.error(error);
-            alert("Sunucu hatası!");
         }
-    }
-
-    // Öğretmen Girişi
-    async function loginTeacher() {
-        const email = document.getElementById('teacherEmail').value;
-        const password = document.getElementById('teacherPass').value;
-
-        try {
-            const response = await fetch('/api/verify-teacher/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-
-            if (response.ok) window.location.href = '/ogretmen/';
-            else alert("Hatalı öğretmen şifresi!");
-        } catch (error) {
-            console.error(error);
-            alert("Sunucu hatası!");
-        }
-    }
-</script>
-{% endblock %}
+    </script>
+</body>
+</html>
